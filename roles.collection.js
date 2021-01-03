@@ -141,7 +141,7 @@ function runDefender(creep)
 
 function runClaimer(creep)
 {
-	if(Memory.invasionTarget != undefined || Memory.invasionTarget != '')
+	if(Memory.invasionTarget != undefined && Memory.invasionTarget != '')
 	{
 		if(creep.room != Memory.invasionTarget)
 		{
