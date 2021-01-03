@@ -1,3 +1,5 @@
+Memory.roles = {};
+
 function setWorkingState(creep)
 {
 	if(creep.memory.working && creep.store[RESOURCE_ENERGY] == 0)
@@ -137,18 +139,50 @@ function runDefender(creep)
 	
 }
 
+function runClaimer(creep)
+{
+	if(Memory.invasionTarget != undefined || Memory.invasionTarget != '')
+	{
+		if(creep.room != Memory.invasionTarget)
+		{
+			creep.moveTo(creep.pos.findClosestByRange(creep.room.findExitTo(Memory.invasionTarget)));
+		}
+		else
+		{
+			if(creep.room.controller.owner.username = Memory.emperor)
+			{
+				Memory.invasionTarget = '';
+			}
+			else if(creep.claimController(creep.room.controller) == ERR_NOT_IN_RANGE)
+			{
+				creep.moveTo(creep.room.controller);
+			}
+		}
+	}
+}
+
 function Role(_name, _reqNumber, _body, _runFunction)
 {
 	this.name = _name;
 	this.reqNumber = _reqNumber;
-	this.body = _body;
+	this.body = [_body];
 	this.run = _runFunction;
+	
+	Memory.roles[_name] = {};
+	Memory.roles[_name].bodyLvl = 0;
+	Memory.roles[_name].reqNumber = _reqNumber;
 }
 
-Role.prototype.generate = function(spawn, _body, _name)
+Role.prototype.setLevels = function(levels)
+{
+	this.body = this.body.concat(levels);
+}
+
+Role.prototype.generate = function(spawn, _body_lvl, _name)
 {
 	let gen_name = ((_name != undefined) ? _name : (this.name + "_" + Game.time));
-	let gen_body = ((_body != undefined) ? _body : (this.body));
+	let gen_body_lvl = ((_body_lvl != undefined) ? _body_lvl : Memory.roles[this.name].bodyLvl);
+	let gen_body = (this.body[gen_body_lvl] != undefined) ? this.body[gen_body_lvl] : this.body[0];
 	return spawn.spawnCreep(gen_body, gen_name, {memory: {role: this.name, working: false}});
 }
 
@@ -160,16 +194,18 @@ function addRole(_name, _reqNumber, _body, _runFunction)
 }
 
 addRole('harvester', 5, [WORK, CARRY, MOVE], runHarvester);
-
 addRole('upgrader', 3, [WORK, CARRY, MOVE], runUpgrader);
-
-addRole('builder', 4, [WORK, WORK, CARRY, MOVE, MOVE], runBuilder);
-
-addRole('hugeBuilder', 0, [WORK, WORK, CARRY, MOVE, MOVE], runBuilder);
-
+addRole('builder', 4, [WORK, CARRY, MOVE], runBuilder);
 addRole('repairer', 2, [ WORK, CARRY, MOVE], runRepairer);
+addRole('defender', 3, [ATTACK, ATTACK, MOVE], runDefender);
+addRole('claimer', 0, [MOVE, CLAIM], runClaimer);
 
-addRole('defender', 3, [ATTACK, ATTACK, MOVE, MOVE], runDefender);
+roles['harvester'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]]);
+roles['upgrader'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]]);
+roles['builder'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]]);
+roles['repairer'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]]);
+roles['defender'].setLevels([[ATTACK, ATTACK, MOVE, MOVE]]);
+roles['claimer'].setLevels([[ATTACK, MOVE, MOVE, CLAIM]]);
 
 Creep.prototype.runRole = function()
 {
@@ -179,5 +215,19 @@ Creep.prototype.runRole = function()
 		role.run(this);
 	}
 }
+
+// TODO: da spostare
+StructureTower.prototype.defend =
+    function () {
+        // find closes hostile creep
+        var target = this.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+        // if one is found...
+        if (target != undefined) {
+            // ...FIRE!
+            this.attack(target);
+        }
+    };
+	
+//Memory.rolesDebug = roles;
 
 module.exports = roles

@@ -1,3 +1,5 @@
+Memory.emperor = 'ivny';
+
 var roles = require('roles.collection');
 var cmd = require('commands');
 
@@ -30,8 +32,8 @@ module.exports.loop = function ()
 	for(let role_name in roles)
 	{
 		let role = roles[role_name];
-		let n = _.sum(Game.creeps, (c) => c.memory.role == role_name)
-		let req = (role.reqNumber == undefined) ? 2 : role.reqNumber;
+		let n = _.sum(Game.creeps, (c) => c.memory.role == role_name);
+		let req = Memory.roles[role_name].reqNumber;
 		if(n < req)
 		{
 			let r = role.generate(Game.spawns['Spawn1']);
@@ -47,5 +49,12 @@ module.exports.loop = function ()
 	{
         let creep = Game.creeps[name];
 		creep.runRole();
+    }
+	
+	var towers = _.filter(Game.structures, s => s.structureType == STRUCTURE_TOWER);
+    // for each tower
+    for (let tower of towers) {
+        // run tower logic
+        tower.defend();
     }
 }
