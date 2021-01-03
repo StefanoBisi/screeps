@@ -5,7 +5,7 @@ var cmd = require('commands');
 
 module.exports.loop = function ()
 {
-	if(Memory.cmd != undefined && Memory.cmd != '')
+	if(!(Memory.cmd == undefined || Memory.cmd == ''))
 	{
 		try
 		{

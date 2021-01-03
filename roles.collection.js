@@ -141,21 +141,32 @@ function runDefender(creep)
 
 function runClaimer(creep)
 {
-	if(Memory.invasionTarget != undefined && Memory.invasionTarget != '')
+	if(!(Memory.invasionTarget == undefined || Memory.invasionTarget == ''))
 	{
-		if(creep.room != Memory.invasionTarget)
+		if(creep.room.name != Memory.invasionTarget)
 		{
 			creep.moveTo(creep.pos.findClosestByRange(creep.room.findExitTo(Memory.invasionTarget)));
 		}
 		else
 		{
-			if(creep.room.controller.owner.username = Memory.emperor)
+			let target = creep.room.controller;
+			if (target.my) { Memory.invasionTarget = ''; }
+			else
 			{
-				Memory.invasionTarget = '';
-			}
-			else if(creep.claimController(creep.room.controller) == ERR_NOT_IN_RANGE)
-			{
-				creep.moveTo(creep.room.controller);
+				if(target.level > 0)
+				{
+					if(creep.attackController(target) == ERR_NOT_IN_RANGE)
+					{
+						creep.moveTo(target);
+					}
+				}
+				else
+				{
+					if(creep.claimController(target) == ERR_NOT_IN_RANGE)
+					{
+						creep.moveTo(target);
+					}
+				}
 			}
 		}
 	}
@@ -173,9 +184,10 @@ function Role(_name, _reqNumber, _body, _runFunction)
 	Memory.roles[_name].reqNumber = _reqNumber;
 }
 
-Role.prototype.setLevels = function(levels)
+Role.prototype.setLevels = function(levels, _default)
 {
 	this.body = this.body.concat(levels);
+	if(_default != undefined) { Memory.roles[this.name].bodyLvl = _default; }
 }
 
 Role.prototype.generate = function(spawn, _body_lvl, _name)
@@ -200,12 +212,12 @@ addRole('repairer', 2, [ WORK, CARRY, MOVE], runRepairer);
 addRole('defender', 3, [ATTACK, ATTACK, MOVE], runDefender);
 addRole('claimer', 0, [MOVE, CLAIM], runClaimer);
 
-roles['harvester'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]]);
-roles['upgrader'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]]);
-roles['builder'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]]);
-roles['repairer'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]]);
-roles['defender'].setLevels([[ATTACK, ATTACK, MOVE, MOVE]]);
-roles['claimer'].setLevels([[ATTACK, MOVE, MOVE, CLAIM]]);
+roles['harvester'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]], 1);
+roles['upgrader'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]], 1);
+roles['builder'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]], 1);
+roles['repairer'].setLevels([[WORK, WORK, CARRY, MOVE, MOVE]], 1);
+roles['defender'].setLevels([[ATTACK, ATTACK, ATTACK, MOVE, MOVE]]);
+roles['claimer'].setLevels([[ATTACK, MOVE, MOVE, CLAIM]], 1);
 
 Creep.prototype.runRole = function()
 {
