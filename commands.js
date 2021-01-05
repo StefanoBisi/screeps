@@ -18,10 +18,12 @@ function roomsReport()
 	for(let room_name in Game.rooms)
 	{
 		let room = Game.rooms[room_name];
-		/*if(room.controller.my) { */
-		out += '\n' + room.name;
-		out += ind + 'energy: ' + room.energyAvailable + '/' + room.energyCapacityAvailable;
-		out += ind + 'creeps: ' + room.find(FIND_CREEPS).length;
+		if(room.controller.my)
+		{
+			out += '\n' + room.name;
+			out += ind + 'energy: ' + room.energyAvailable + '/' + room.energyCapacityAvailable;
+			out += ind + 'creeps: ' + room.find(FIND_CREEPS).length;
+		}
 	}
 	console.log(out);
 }
@@ -44,7 +46,7 @@ function spawn(args)
 {
 	let role = roles[args[1]]
 	//let bodyLvl = (args.length >= 2) ? args[2] : 0;
-	let n = role.generate(Game.spawns['Spawn1']/*, bodyLvl*/);
+	let n = role.generate(Game.spawns[Memory.default.spawn]/*, bodyLvl*/);
 	console.log('spawn: ' + n);
 }
 
@@ -55,6 +57,12 @@ function setRole(args)
 
 function invade(args)
 {
+	if(args[1])
+	{
+		Memory.invasionTarget = args[1];
+		if (_.sum(Game.creeps, (c) => c.memory.role == 'claimer') == 0) { roles['claimer'].generate(Memory.default.spawn); }
+	}
+	else { console.log('Missing target argument'); }
 }
 
 Memory.cmd = '';

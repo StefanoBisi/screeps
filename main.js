@@ -1,11 +1,13 @@
 Memory.emperor = 'ivny';
+Memory.default = {};
+Memory.default.spawn = 'Spawn1';
 
 var roles = require('roles.collection');
 var cmd = require('commands');
 
 module.exports.loop = function ()
 {
-	if(!(Memory.cmd == undefined || Memory.cmd == ''))
+	if(Memory.cmd)
 	{
 		try
 		{
@@ -29,19 +31,26 @@ module.exports.loop = function ()
 		}
 	}
 	
-	for(let role_name in roles)
+	if(Game.time % 11)
 	{
-		let role = roles[role_name];
-		let n = _.sum(Game.creeps, (c) => c.memory.role == role_name);
-		let req = Memory.roles[role_name].reqNumber;
-		if(n < req)
+		for(let spawn_name in Game.spawns)
 		{
-			let r = role.generate(Game.spawns['Spawn1']);
-			if(!(r < 0))
+			let room_name = Game.spawns[spawn_name].room.name;
+			for(let role_name in roles)
 			{
-				console.log('Generating ' + role_name + ' creep');
+				let role = roles[role_name];
+				let n = _.sum(Game.creeps, (c) => c.memory.role == role_name && c.room.name == room_name);
+				let req = Memory.roles[role_name].reqNumber;
+				if(n < req)
+				{
+					let r = role.generate(spawn_name);
+					if(!(r < 0))
+					{
+						console.log('Generating ' + role_name + ' creep');
+					}
+					break;
+				}
 			}
-			break;
 		}
 	}
 
