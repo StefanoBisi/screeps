@@ -46,7 +46,7 @@ function spawn(args)
 {
 	let role = roles[args[1]]
 	//let bodyLvl = (args.length >= 2) ? args[2] : 0;
-	let n = role.generate(Game.spawns[Memory.default.spawn]/*, bodyLvl*/);
+	let n = role.generate(Memory.default.spawn/*, bodyLvl*/);
 	console.log('spawn: ' + n);
 }
 

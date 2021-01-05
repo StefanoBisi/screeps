@@ -1,15 +1,15 @@
-Memory.roles = {};
-var defaultBodyLvl = 2;
+if(!Memory.roles) { Memory.roles = {}; }
+var defaultBodyLvl = 4;
 
 function workerBody(lvl = 0)
 {
 	if(lvl < 0) { lvl = 0; }
-	let w_count = lvl + 1;
-	let c_count = 1 + Math.ceil(lvl / 2.0);
+	if(lvl > 15) { lvl = 15; }
+	let w = [], c = [], m = [];
 	let _body = [];
-	for(let i=0; i<w_count; i++) { _body.push(WORK); }
-	for(let i=0; i<c_count; i++) { _body.push(CARRY); }
-	for(let i=0; i<w_count; i++) { _body.push(MOVE); }
+	for(let i=0; i<(lvl+1); i++) { _body.push(WORK); }
+	for(let i=0; i<(lvl+1); i++) { _body.push(CARRY); }
+	for(let i=0; i<(lvl+1); i++) { _body.push(MOVE); }
 	return _body;
 }
 
@@ -46,49 +46,76 @@ function claimerBody(lvl = 0)
 function bodyCost(body)
 {
 	let _cost = 0;
-	for(let part in body) { _cost += BODYPART_COST[part]; }
+	for(let i in body) { _cost += BODYPART_COST[body[i]]; }
 	return _cost;
 }
 
+const workingStates = {mining: 0, working: 1, mineral: 2}
+
 function setWorkingState(creep)
 {
-	if(creep.memory.working && creep.store[RESOURCE_ENERGY] == 0)
+	for(let min in creep.store)
 	{
-		creep.memory.working = false;
+		if(min != RESOURCE_ENERGY)
+		{
+			let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s){return(s.structureType == STRUCTURE_CONTAINER);}});
+			if(target)
+			{
+				creep.memory.workingState = workingStates.mineral;
+				if(creep.transfer(target, min) == ERR_NOT_IN_RANGE)
+				{
+					creep.moveTo(target);
+				}
+				return 0;
+			}
+		}
 	}
-	if(!creep.memory.working && creep.store.getFreeCapacity() == 0)
+	if(creep.memory.workingState == workingStates.working && creep.store[RESOURCE_ENERGY] == 0)
 	{
-		creep.memory.working = true;
+		creep.memory.workingState = workingStates.mining;
+	}
+	if(creep.memory.workingState == workingStates.mining && creep.store.getFreeCapacity() == 0)
+	{
+		creep.memory.workingState = workingStates.working;
 	}
 }
 
+/*for(let min in creep.store)
+	{
+		if(min != RESOURCE_ENERGY)
+		{
+			let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, (s) => s.structureType == STRUCTURE_CONTAINER);
+			if(target)
+			{
+				if(creep.transfer(target, min) == ERR_NOT_IN_RANGE)
+				{
+					creep.moveTo(target);
+				}
+			}
+		}
+	}*/
+
 function mineEnergy(creep)
 {
-	let target = creep.pos.findClosestByPath(FIND_SOURCES, {filter: (s) => s.energy > 0});
-	if(target != undefined)
+	let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES);
+	if(target)
 	{
-		if(creep.harvest(target) == ERR_NOT_IN_RANGE)
+		if(creep.pickup(target) == ERR_NOT_IN_RANGE)
 		{
 			creep.moveTo(target);
 		}
 	}
-	/*if(creep.store.getFreeCapacity() == 0)
-	{
-		creep.memory.target = undefined;
-		return;
-	}
-	else if(creep.memory.target != undefined)
-	{
-		let _source = Game.getObjectById(creep.memory.target);
-		if(creep.harvest(_source) == ERR_NOT_IN_RANGE)
-		{
-			creep.moveTo(_source);
-		}
-	}
 	else
 	{
-		creep.memory.target = creep.pos.findClosestByPath(FIND_SOURCES, {filter: (s) => s.energy > 0}).id;
-	}*/
+		target = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
+		if(target != undefined)
+		{
+			if(creep.harvest(target) == ERR_NOT_IN_RANGE)
+			{
+				creep.moveTo(target);
+			}
+		}
+	}
 }
 
 function upgradeController(creep)
@@ -102,7 +129,7 @@ function upgradeController(creep)
 function runHarvester(creep)
 {
 	setWorkingState(creep);
-	if(creep.memory.working)
+	if(creep.memory.workingState == workingStates.working)
 	{
 		let structure = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
 				filter: (s) => (s.structureType == STRUCTURE_SPAWN
@@ -120,20 +147,21 @@ function runHarvester(creep)
 			}			
 		}
 	}
-	else { mineEnergy(creep); }
+	else if(creep.memory.workingState == workingStates.mining) { mineEnergy(creep); }
 }
 
 function runUpgrader(creep)
 {
+	
 	setWorkingState(creep);
-	if(creep.memory.working) { upgradeController(creep); }
-	else{ mineEnergy(creep); }
+	if(creep.memory.workingState == workingStates.working) { upgradeController(creep); }
+	else if(creep.memory.workingState == workingStates.mining){ mineEnergy(creep); }
 }
 
 function runBuilder(creep)
 {
 	setWorkingState(creep);
-	if(creep.memory.working)
+	if(creep.memory.workingState == workingStates.working)
 	{
 		var target = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
 		if(target != undefined)
@@ -148,7 +176,7 @@ function runBuilder(creep)
 			upgradeController(creep);
 		}
 	}
-	else
+	else if(creep.memory.workingState == workingStates.mining)
 	{
 		mineEnergy(creep);
 	}
@@ -157,7 +185,7 @@ function runBuilder(creep)
 function runRepairer(creep)
 {
 	setWorkingState(creep);
-	if(creep.memory.working)
+	if(creep.memory.workingState == workingStates.working)
 	{
 		let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
                 filter: (s) => s.hits < s.hitsMax && s.structureType != STRUCTURE_WALL && s.structureType != STRUCTURE_RAMPART
@@ -184,7 +212,7 @@ function runRepairer(creep)
 			}
 		}	
 	}
-	else { mineEnergy(creep); }
+	else if(creep.memory.workingState == workingStates.mining) { mineEnergy(creep); }
 }
 
 function runDefender(creep)
@@ -262,21 +290,46 @@ function runClaimer(creep)
 function Role(_name, _reqNumber, _body, _runFunction, _defaultBodyLvl = defaultBodyLvl)
 {
 	this.name = _name;
-	this.body = _body;
+	this.generateBody = _body;
 	this.run = _runFunction;
 	
-	Memory.roles[_name] = {};
-	Memory.roles[_name].bodyLvl = _defaultBodyLvl;
+	if(!Memory.roles[_name]) { Memory.roles[_name] = {}; }
+	if(!Memory.roles[_name].body) { Memory.roles[_name].body = {}; }
+	Memory.roles[_name].body.lvl = _defaultBodyLvl;
 	Memory.roles[_name].reqNumber = _reqNumber;
+}
+
+Role.prototype.body = function(lvl = 0)
+{
+	if(!Memory.roles[this.name].body[lvl])
+	{
+		Memory.roles[this.name].body[lvl] = {};
+		let _parts = this.generateBody(lvl);
+		Memory.roles[this.name].body[lvl].parts = _parts;
+		Memory.roles[this.name].body[lvl].cost = bodyCost(_parts);
+	}
+	return Memory.roles[this.name].body[lvl].parts;
+}
+
+Role.prototype.bodyCost = function(lvl = 0)
+{
+	if(!Memory.roles[this.name].body[lvl])
+	{
+		Memory.roles[this.name].body[lvl] = {}
+		let _parts = this.generateBody(lvl);
+		Memory.roles[this.name].body[lvl].parts = _parts;
+		Memory.roles[this.name].body[lvl].cost = bodyCost(_parts);
+	}
+	return Memory.roles[this.name].body[lvl].cost;
 }
 
 Role.prototype.generate = function(_spawn_name, _body_lvl, _name)
 {
 	let spawn = (_spawn_name != undefined) ? Game.spawns[_spawn_name] : Game.spawns[Memory.default.spawn];
 	let gen_name = ((_name != undefined) ? _name : (this.name + "_" + Game.time));
-	let gen_body_lvl = ((_body_lvl != undefined) ? _body_lvl : Memory.roles[this.name].bodyLvl);
+	let gen_body_lvl = ((_body_lvl != undefined) ? _body_lvl : Memory.roles[this.name].body.lvl);
 	let gen_body = this.body(gen_body_lvl);
-	return spawn.spawnCreep(gen_body, gen_name, {memory: {role: this.name, working: false}});
+	return spawn.spawnCreep(gen_body, gen_name, {memory: {role: this.name, workingState: workingStates.mining}});
 }
 
 var roles = {}
@@ -286,17 +339,17 @@ function addRole(_role)
 	roles[_role.name] = _role;
 }
 
-addRole(new Role('harvester', 4, workerBody, runHarvester));
-addRole(new Role('upgrader', 3, workerBody, runUpgrader));
-addRole(new Role('builder', 4, workerBody, runBuilder));
-addRole(new Role('repairer', 2, workerBody, runRepairer));
-addRole(new Role('defender', 1, defenderBody, runDefender, 0));
+addRole(new Role('harvester', 3, workerBody, runHarvester));
+addRole(new Role('upgrader', 2, workerBody, runUpgrader));
+addRole(new Role('builder', 2, workerBody, runBuilder));
+addRole(new Role('repairer', 1, workerBody, runRepairer));
+addRole(new Role('defender', 2, defenderBody, runDefender, 0));
 addRole(new Role('trooper', 0, trooperBody, runTrooper, 0));
 addRole(new Role('claimer', 0, claimerBody, runClaimer, 0));
 
 Creep.prototype.runRole = function()
 {
-	if(this.memory.role != undefined)
+	if(this.memory.role && !this.spawning)
 	{
 		let role = roles[this.memory.role];
 		role.run(this);
@@ -313,5 +366,12 @@ StructureTower.prototype.defend = function ()
 };
 
 //Memory.rolesDebug = roles;
+
+for(let c in Game.creeps)
+{
+	let creep = Game.creeps[c];
+	if(creep.memory.working) { creep.memory.workingState = workingStates.working }
+	else { creep.memory.workingState = workingStates.mining } 
+}
 
 module.exports = roles

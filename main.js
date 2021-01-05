@@ -35,20 +35,23 @@ module.exports.loop = function ()
 	{
 		for(let spawn_name in Game.spawns)
 		{
-			let room_name = Game.spawns[spawn_name].room.name;
-			for(let role_name in roles)
+			if(!Game.spawns[spawn_name].spawning)
 			{
-				let role = roles[role_name];
-				let n = _.sum(Game.creeps, (c) => c.memory.role == role_name && c.room.name == room_name);
-				let req = Memory.roles[role_name].reqNumber;
-				if(n < req)
+				let room = Game.spawns[spawn_name].room;
+				for(let role_name in roles)
 				{
-					let r = role.generate(spawn_name);
-					if(!(r < 0))
+					let role = roles[role_name];
+					let n = _.sum(room.find(FIND_CREEPS), (c) => c.memory.role == role_name);
+					let req = Memory.roles[role_name].reqNumber;
+					if(n < req)
 					{
-						console.log('Generating ' + role_name + ' creep');
+						let r = role.generate(spawn_name);
+						if(!(r < 0))
+						{
+							console.log('Generating ' + role_name + ' creep');
+						}
+						break;
 					}
-					break;
 				}
 			}
 		}
