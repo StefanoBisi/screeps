@@ -31,7 +31,7 @@ module.exports.loop = function ()
 		}
 	}
 	
-	if(Game.time % 11)
+	if((Game.time % 11) == 0)
 	{
 		for(let spawn_name in Game.spawns)
 		{
