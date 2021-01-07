@@ -141,15 +141,24 @@ function runMiner(creep)
 {
 	if(creep.memory.target)
 	{
-		let target = Game.getObjectById(creep.memory.target);
-		let source = Game.getObjectById(creep.memory.source)
-		if(creep.pos != target.pos) { creep.moveTo(target); }
-		if(source.energy > 0) { creep.harvest(source); }
+		let source = Game.getObjectById(creep.memory.target);
+		let container = undefined;
+		if(source) { container = Game.getObjectById(Memory.rooms[source.room.name].sources[source.id].container); }
+		if(!source || !container)
+		{
+			creep.memory.target = undefined;
+		}
+		else
+		{
+			if(creep.pos != container.pos) { creep.moveTo(container); }
+			if(source.energy > 0) { creep.harvest(source); }
+
+		}
 	}
 	else
 	{
 		let room = creep.room.name;
-		for(let id in Memory.rooms[room].energyMines)
+		for(let id in Memory.rooms[room].sources)
 		{
 			let check = true;
 			for(let c in Game.creeps)
@@ -164,7 +173,6 @@ function runMiner(creep)
 			if(check)
 			{
 				creep.memory.target = id;
-				creep.memory.source = Memory.rooms[room].energyMines[id];
 				break;
 			}
 		}
@@ -185,7 +193,11 @@ function runStorer(creep)
 		if(target) { if(creep.pickup(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
 		if(energyRequired && !target)
 		{
-			target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] > creep.store.getCapacity()});
+			target = creep.pos.findClosestByPath(FIND_STRUCTURES,
+				{filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] >= creep.store.getCapacity()});
+			if(!target) { target = creep.pos.findClosestByPath(FIND_TOMBSTONES, {filter: (t) => t.store.getUsedCapacity() > 0}); }
+			if(!target) { target = creep.pos.findClosestByPath(FIND_STRUCTURES,
+				{filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] > 0}); }
 			if(target) { if(creep.withdraw(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
 		}
 	}
@@ -238,11 +250,17 @@ function runWorker(creep)
 			{
 				target = creep.pos.findClosestByPath(FIND_STRUCTURES,
 					{filter: (s) => s.structureType == STRUCTURE_CONTAINER && s.store[RESOURCE_ENERGY] >= creep.store.getCapacity()});
-				if(target) { if(creep.withdraw(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
-				else
+				if(!target) { target = creep.pos.findClosestByPath(FIND_STRUCTURES,
+					{filter: (s) => s.structureType == STRUCTURE_CONTAINER && s.store[RESOURCE_ENERGY] > 0}); }
+				if(target)
 				{
-					creep.memory.task = tasks.none;
-					creep.memory.target = undefined;
+					let n = creep.withdraw(target, RESOURCE_ENERGY);
+					if( n == ERR_NOT_IN_RANGE) { creep.moveTo(target); }
+					else
+					{
+						creep.memory.task = tasks.none;
+						creep.memory.target = undefined;
+					}
 				}
 			}
 		}
@@ -518,14 +536,11 @@ Role.prototype.generate = function(_spawn_name, _body_lvl, _name)
 
 var roles = {}
 
-function addRole(_role)
-{
-	roles[_role.name] = _role;
-}
+function addRole(_role) { roles[_role.name] = _role; }
 
 addRole(new Role('miner', 2, minerBody, runMiner));
 addRole(new Role('storer', 3, storerBody, runStorer));
-addRole(new Role('worker', 6, workerBody, runWorker, 6));
+addRole(new Role('worker', 4, workerBody, runWorker, 6));
 addRole(new Role('harvester', 0, workerBody, runHarvester));
 addRole(new Role('upgrader', 0, workerBody, runUpgrader));
 addRole(new Role('builder', 0, workerBody, runBuilder));

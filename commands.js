@@ -78,21 +78,21 @@ function computeRoom(args)
 	let room = Game.rooms[args[1]];
 	
 	//Energy Mines
-	Memory.rooms[args[1]].energyMines = {};
-	let source_containers = room.find(FIND_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_CONTAINER})
-	let sc_count = 0;
-	Memory.debugContainer = source_containers;
-	for(let i in source_containers)
+	Memory.rooms[args[1]].sources = {};
+	let sources = room.find(FIND_SOURCES);
+	let mines_count = 0;
+	for(let i in sources)
 	{
-		let c = source_containers[i];
-		let s = c.pos.findInRange(FIND_SOURCES, 1);
-		if(s.length > 0)
+		let source = sources[i];
+		Memory.rooms[args[1]].sources[source.id] = {};
+		let containers = source.pos.findInRange(FIND_STRUCTURES, 1, {filter: (s) => s.structureType == STRUCTURE_CONTAINER});
+		if(containers)
 		{
-			Memory.rooms[args[1]].energyMines[c.id] = s[0].id;
-			sc_count += 1;
+			Memory.rooms[args[1]].sources[source.id].container = containers[0].id;
+			mines_count += 1;
 		}
 	}
-	Memory.rooms[args[1]].roles.miner.required = sc_count;
+	Memory.rooms[args[1]].roles.miner.required = mines_count;
 	
 	if(args[2] && args[2] == 'build')
 	{

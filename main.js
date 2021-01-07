@@ -61,7 +61,9 @@ module.exports.loop = function ()
     for(let name in Game.creeps)
 	{
         let creep = Game.creeps[name];
-		creep.runRole();
+		try { creep.runRole(); }
+		catch(err) { console.log('ERROR - creep ' + name + ' (role ' + creep.memory.role + '):\n' + err); }
+		
     }
 	
 	var towers = _.filter(Game.structures, s => s.structureType == STRUCTURE_TOWER);
