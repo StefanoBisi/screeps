@@ -1,6 +1,27 @@
 if(!Memory.roles) { Memory.roles = {}; }
 var defaultBodyLvl = 4;
 
+function minerBody(lvl = 0)
+{
+	if(lvl < 0) { lvl = 0; }
+	if(lvl > 4) { lvl = 4; }
+	let _body = [];
+	for(let i=0; i<(lvl+1); i++) { _body.push(WORK) }
+	_body.push(MOVE);
+	return _body;
+}
+
+function storerBody(lvl = 0)
+{
+	if(lvl < 0) { lvl = 0; }
+	if(lvl > 4) { lvl = 4; }
+	let _body = [];
+	let n = Math.ceil((lvl+1)/2);
+	for(let i=0; i<(lvl+1); i++) { _body.push(CARRY); }
+	for(let i=0; i<(n); i++) { _body.push(MOVE); }
+	return _body;
+}
+
 function workerBody(lvl = 0)
 {
 	if(lvl < 0) { lvl = 0; }
@@ -80,21 +101,6 @@ function setState(creep)
 	}
 }
 
-/*for(let min in creep.store)
-	{
-		if(min != RESOURCE_ENERGY)
-		{
-			let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, (s) => s.structureType == STRUCTURE_CONTAINER);
-			if(target)
-			{
-				if(creep.transfer(target, min) == ERR_NOT_IN_RANGE)
-				{
-					creep.moveTo(target);
-				}
-			}
-		}
-	}*/
-
 function mineEnergy(creep)
 {
 	let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES);
@@ -127,6 +133,113 @@ function upgradeController(creep)
 	if(creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE)
 	{
 		creep.moveTo(creep.room.controller);
+	}
+}
+
+function runMiner(creep)
+{
+	if(creep.memory.target)
+	{
+		let target = Game.getObjectById(creep.memory.target);
+		let source = Game.getObjectById(creep.memory.source)
+		if(creep.pos != target.pos) { creep.moveTo(target); }
+		if(source.energy > 0) { creep.harvest(source); }
+	}
+	else
+	{
+		let room = creep.room.name;
+		for(let id in Memory.rooms[room].energyMines)
+		{
+			let check = true;
+			for(let c in Memory.creeps)
+			{
+				if(c == creep.name) { continue; }
+				if(Memory.creeps[c].role == 'miner' && Memory.creeps[c].target == id)
+				{
+					check = false;
+					break;
+				}
+			}
+			if(check)
+			{
+				creep.memory.target = id;
+				creep.memory.source = Memory.rooms[room].energyMines[id];
+				break;
+			}
+		}
+	}
+}
+
+function runStorer(creep)
+{
+	let energyRequired = (creep.room.find(FIND_MY_STRUCTURES, {
+		filter: (s) => (s.structureType == STRUCTURE_SPAWN
+			|| s.structureType == STRUCTURE_EXTENSION
+			|| s.structureType == STRUCTURE_TOWER)
+			&& s.energy < s.energyCapacity
+		}).length > 0);
+	if(creep.store.getUsedCapacity() == 0)
+	{
+		let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES);
+		if(target) { if(creep.pickup(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+		if(energyRequired && !target)
+		{
+			target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] > creep.store.getCapacity()});
+			if(target) { if(creep.withdraw(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+		}
+	}
+	else
+	{
+		if(energyRequired && creep.store[RESOURCE_ENERGY] > 0)
+		{
+			let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+				filter: (s) => (s.structureType == STRUCTURE_SPAWN
+					|| s.structureType == STRUCTURE_EXTENSION
+					|| s.structureType == STRUCTURE_TOWER)
+					&& s.energy < s.energyCapacity
+				});
+			if(target) { if(creep.transfer(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+		}
+		else
+		{
+			for(let min in creep.store)
+			{
+				if(min != RESOURCE_ENERGY)
+				{
+					let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {filter: function(s){return(s.structureType == STRUCTURE_CONTAINER);}});
+					if(target)
+					{
+						creep.memory.state = states.mineral;
+						if(creep.transfer(target, min) == ERR_NOT_IN_RANGE) { creep.moveTo(target); }
+						return 0;
+					}
+				}
+			}
+		}
+	}
+}
+
+function runWorker(creep)
+{
+	if(creep.store[RESOURCE_ENERGY] == 0)
+	{
+		let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_CONTAINER && s.store[RESOURCE_ENERGY] >= creep.store.getCapacity()});
+		//if(!target) { target = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE) }
+		//console.log('worker target: ' + target);
+		if(target) { if(creep.withdraw(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+	}
+	else
+	{
+		let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+                filter: (s) => s.hits < s.hitsMax && s.structureType != STRUCTURE_WALL && s.structureType != STRUCTURE_RAMPART
+            });
+		if (target) { if (creep.repair(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+		else
+		{
+			target = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
+			if(target) { if(creep.build(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+			else { upgradeController(creep); }
+		}
 	}
 }
 
@@ -291,7 +404,7 @@ function runClaimer(creep)
 	}
 }
 
-function Role(_name, _reqNumber, _body, _runFunction, _defaultBodyLvl = defaultBodyLvl)
+function Role(_name, _required, _body, _runFunction, _defaultBodyLvl = defaultBodyLvl)
 {
 	this.name = _name;
 	this.generateBody = _body;
@@ -300,7 +413,7 @@ function Role(_name, _reqNumber, _body, _runFunction, _defaultBodyLvl = defaultB
 	if(!Memory.roles[_name]) { Memory.roles[_name] = {}; }
 	if(!Memory.roles[_name].body) { Memory.roles[_name].body = {}; }
 	Memory.roles[_name].body.lvl = _defaultBodyLvl;
-	Memory.roles[_name].reqNumber = _reqNumber;
+	Memory.roles[_name].required = _required;
 }
 
 Role.prototype.body = function(lvl = 0)
@@ -343,10 +456,13 @@ function addRole(_role)
 	roles[_role.name] = _role;
 }
 
-addRole(new Role('harvester', 3, workerBody, runHarvester));
-addRole(new Role('upgrader', 2, workerBody, runUpgrader));
-addRole(new Role('builder', 1, workerBody, runBuilder));
-addRole(new Role('repairer', 1, workerBody, runRepairer));
+addRole(new Role('miner', 2, minerBody, runMiner));
+addRole(new Role('storer', 3, storerBody, runStorer));
+addRole(new Role('worker', 5, workerBody, runWorker));
+addRole(new Role('harvester', 0, workerBody, runHarvester));
+addRole(new Role('upgrader', 0, workerBody, runUpgrader));
+addRole(new Role('builder', 0, workerBody, runBuilder));
+addRole(new Role('repairer', 0, workerBody, runRepairer));
 addRole(new Role('defender', 3, defenderBody, runDefender, 1));
 addRole(new Role('trooper', 0, trooperBody, runTrooper, 0));
 addRole(new Role('claimer', 0, claimerBody, runClaimer, 0));

@@ -1,6 +1,7 @@
 Memory.emperor = 'ivny';
 Memory.default = {};
 Memory.default.spawn = 'Spawn1';
+if(!Memory.rooms) { Memory.rooms = {}; }
 
 var roles = require('roles.collection');
 var cmd = require('commands');
@@ -42,7 +43,7 @@ module.exports.loop = function ()
 				{
 					let role = roles[role_name];
 					let n = _.sum(room.find(FIND_CREEPS), (c) => c.memory.role == role_name);
-					let req = Memory.roles[role_name].reqNumber;
+					let req = /*(Memory.rooms[room.name].roles[role_name]) ? Memory.rooms[room.name].roles[role_name].required :*/ Memory.roles[role_name].required;
 					if(n < req)
 					{
 						let r = role.generate(spawn_name);

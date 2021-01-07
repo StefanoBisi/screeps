@@ -45,14 +45,9 @@ function cleanDebug()
 function spawn(args)
 {
 	let role = roles[args[1]]
-	//let bodyLvl = (args.length >= 2) ? args[2] : 0;
-	let n = role.generate(Memory.default.spawn/*, bodyLvl*/);
+	let bodyLvl = (args.length >= 2) ? parseInt(args[2]) : 0;
+	let n = role.generate(Memory.default.spawn, bodyLvl);
 	console.log('spawn: ' + n);
-}
-
-function setRole(args)
-{
-	Memory.roles[args[1]][args[2]] = args[3];
 }
 
 function invade(args)
@@ -63,6 +58,48 @@ function invade(args)
 		if (_.sum(Game.creeps, (c) => c.memory.role == 'claimer') == 0) { roles['claimer'].generate(Memory.default.spawn); }
 	}
 	else { console.log('Missing target argument'); }
+}
+
+function computeRoom(args)
+{
+	if(!args[1])
+	{
+		console.log('ERROR: missing room name');
+		return(-1);
+	}
+	if(!Game.rooms[args[1]])
+	{
+		console.log('ERROR: requested room doesn\'t exist');
+		return(-1);
+	}
+	if(!Memory.rooms[args[1]]) {Memory.rooms[args[1]] = {}; }
+	if(!Memory.rooms[args[1]].roles) { Memory.rooms[args[1]].roles = {}; }
+	for(let role in roles) { if(!Memory.rooms[args[1]].roles[role]) { Memory.rooms[args[1]].roles[role] = {}; } }
+	let room = Game.rooms[args[1]];
+	
+	//Energy Mines
+	Memory.rooms[args[1]].energyMines = {};
+	let source_containers = room.find(FIND_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_CONTAINER})
+	let sc_count = 0;
+	Memory.debugContainer = source_containers;
+	for(let i in source_containers)
+	{
+		let c = source_containers[i];
+		let s = c.pos.findInRange(FIND_SOURCES, 1);
+		if(s.length > 0)
+		{
+			Memory.rooms[args[1]].energyMines[c.id] = s[0].id;
+			sc_count += 1;
+		}
+	}
+	Memory.rooms[args[1]].roles.miner.required = sc_count;
+	
+	if(args[2] && args[2] == 'build')
+	{
+		//TODO
+	}
+	
+	console.log('Room ' + args[1] + ' computed successfully');
 }
 
 Memory.cmd = '';
@@ -76,7 +113,7 @@ module.exports =
 		else if(args[0] == 'rooms_report') { roomsReport(); }
 		else if(args[0] == 'clean_debug') { cleanDebug(); }
 		else if(args[0] == 'spawn') { spawn(args); }
-		else if(args[0] == 'set_role') { setRole(args); }
+		else if(args[0] == 'compute_room') { computeRoom(args); }
 		else { console.log('Command not recognized'); }
 	}
 }
