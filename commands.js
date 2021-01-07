@@ -60,7 +60,7 @@ function invade(args)
 	else { console.log('Missing target argument'); }
 }
 
-function computeRoom(args)
+function analyzeRoom(args)
 {
 	if(!args[1])
 	{
@@ -74,12 +74,18 @@ function computeRoom(args)
 	}
 	if(!Memory.rooms[args[1]]) {Memory.rooms[args[1]] = {}; }
 	if(!Memory.rooms[args[1]].roles) { Memory.rooms[args[1]].roles = {}; }
-	for(let role in roles) { if(!Memory.rooms[args[1]].roles[role]) { Memory.rooms[args[1]].roles[role] = {}; } }
+	for(let role in roles)
+	{
+		if(!Memory.rooms[args[1]].roles[role]){ Memory.rooms[args[1]].roles[role] = {}; }
+		if(!Memory.rooms[args[1]].roles[role].body){ Memory.rooms[args[1]].roles[role].body = {}; }
+		Memory.rooms[args[1]].roles[role].body.lvl = Memory.roles[role].body.lvl;
+	}
 	let room = Game.rooms[args[1]];
 	
-	//Energy Mines
+	//Sources and Containers
 	Memory.rooms[args[1]].sources = {};
 	let sources = room.find(FIND_SOURCES);
+	Memory.rooms[args[1]].sources.total = sources.length;
 	let mines_count = 0;
 	for(let i in sources)
 	{
@@ -93,6 +99,42 @@ function computeRoom(args)
 		}
 	}
 	Memory.rooms[args[1]].roles.miner.required = mines_count;
+	Memory.rooms[args[1]].roles.miner.body.lvl = 4;
+	
+	// Roles Requirements
+	// Storers
+	let lvl = 0;
+	let cost = 0;
+	do
+	{
+		lvl += 1;
+		let plus_cost = roles['storer'].bodyCost(lvl);
+		if (plus_cost == cost) { break; }
+		else { cost = plus_cost; }
+	} while (cost < (0.7 * room.energyCapacityAvailable));
+	if(mines_count == 0) { Memory.rooms[args[1]].roles.storer.required = 0; }
+	else { Memory.rooms[args[1]].roles.storer.required = Math.ceil((room.energyCapacityAvailable /
+		(200 * _.sum(roles['storer'].body(lvl), (b) => b == CARRY)))); } // 200 = 50 * 4
+	Memory.rooms[args[1]].roles.storer.body = {};
+	Memory.rooms[args[1]].roles.storer.body.lvl = lvl;
+	// Workers
+	lvl = 0;
+	cost = 0;
+	do
+	{
+		lvl += 1;
+		let plus_cost = roles['worker'].bodyCost(lvl);
+		if (plus_cost == cost) { break; }
+		else { cost = plus_cost; }
+	} while (cost < (0.8 * room.energyCapacityAvailable))
+	Memory.rooms[args[1]].roles.worker.required = Math.ceil((900 * Memory.rooms[args[1]].sources.total / // 900 = 0.3 * 3000
+		(50 * _.sum(roles['worker'].body(lvl), (b) => b == CARRY))));
+	Memory.rooms[args[1]].roles.worker.body = {};
+	Memory.rooms[args[1]].roles.worker.body.lvl = lvl;
+	// Defenders
+	if(room.energyCapacityAvailable >= 500) { Memory.rooms[args[1]].roles.defender.required = 3; }
+	else { Memory.rooms[args[1]].roles.defender.required = 0; }
+	Memory.rooms[args[1]].roles.defender.body.lvl = 1;
 	
 	if(args[2] && args[2] == 'build')
 	{
@@ -113,7 +155,7 @@ module.exports =
 		else if(args[0] == 'rooms_report') { roomsReport(); }
 		else if(args[0] == 'clean_debug') { cleanDebug(); }
 		else if(args[0] == 'spawn') { spawn(args); }
-		else if(args[0] == 'compute_room') { computeRoom(args); }
+		else if(args[0] == 'analyze_room') { analyzeRoom(args); }
 		else { console.log('Command not recognized'); }
 	}
 }

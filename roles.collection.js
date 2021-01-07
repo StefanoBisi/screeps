@@ -72,7 +72,7 @@ function bodyCost(body)
 }
 
 const states = {mining: 0, working: 1, mineral: 2};
-const tasks = {none: 0, upgrade: 1, build: 2, repair: 3, refill: 4};
+const tasks = {none: 0, upgrade: 1, build: 2, repair: 3, store:4, refill: 5};
 
 function setState(creep)
 {
@@ -160,6 +160,7 @@ function runMiner(creep)
 		let room = creep.room.name;
 		for(let id in Memory.rooms[room].sources)
 		{
+			if(id == 'total') { continue; }
 			let check = true;
 			for(let c in Game.creeps)
 			{
@@ -243,6 +244,12 @@ function runWorker(creep)
 		}
 		else
 		{
+			if(Memory.rooms[creep.room.name].roles.miner.count == 0)
+			{
+				// Handle "no miner(s)" case
+				let target = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
+				if(target){ if(creep.harvest(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+			}
 			let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES,
 				{filter: (r) => r.resourceType == RESOURCE_ENERGY && r.amount >= creep.store.getCapacity()});
 			if(target) { if(creep.pickup(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
@@ -271,6 +278,22 @@ function runWorker(creep)
 		if(creep.store.getUsedCapacity() == 0) { creep.memory.task = tasks.refill; }
 		if(creep.memory.task == tasks.none) // Find a target and task
 		{
+			// If storers are missing, act like a harvester
+			if(Memory.rooms[creep.room.name].roles.storer.count == 0)
+			{
+				let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+				filter: (s) => (s.structureType == STRUCTURE_SPAWN
+					|| s.structureType == STRUCTURE_EXTENSION
+					|| s.structureType == STRUCTURE_TOWER)
+					&& s.energy < s.energyCapacity
+				});
+				if(target)
+				{
+					creep.memory.target = target.id;
+					creep.memory.task = tasks.store;
+					return(OK);
+				}
+			}
 			// Look for a structure to repair (not being repaired already)
 			let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s)
 				{
@@ -303,6 +326,11 @@ function runWorker(creep)
 		// Execute task
 		let n = OK;
 		let _target = Game.getObjectById(creep.memory.target);
+		if(creep.memory.task == tasks.store)
+		{
+			// Store
+			n = creep.transfer(structure, RESOURCE_ENERGY);
+		}
 		if(creep.memory.task == tasks.repair)
 		{
 			// Repair
