@@ -249,8 +249,9 @@ function runWorker(creep)
 	}
 	else
 	{
-		if(!creep.memory.task) { creep.memory.task = tasks.upgrade; }
-		if(!creep.memory.target) // Find a target and task
+		if(!creep.memory.task) { creep.memory.task = tasks.none; }
+		if(creep.store.getUsedCapacity() == 0) { creep.memory.task = tasks.refill; }
+		if(creep.memory.task == tasks.none) // Find a target and task
 		{
 			// Look for a structure to repair (not being repaired already)
 			let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s)
@@ -281,50 +282,30 @@ function runWorker(creep)
 			creep.memory.task = tasks.upgrade;
 			return(OK);
 		}
-		else // Execute task
+		// Execute task
+		let n = OK;
+		let _target = Game.getObjectById(creep.memory.target);
+		if(creep.memory.task == tasks.repair)
 		{
-			let n = ERR_INVALID_TARGET;
-			let _target = Game.getObjectById(creep.memory.target);
-			if(creep.memory.task == tasks.repair)
-			{
-				// Repair
-				if(_target.hits == _target.hitsMax) { n = ERR_INVALID_TARGET; }
-				else { n = creep.repair(Game.getObjectById(creep.memory.target)); }
-				/*if(n == ERR_NOT_IN_RANGE) { creep.moveTo(Game.getObjectById(creep.memory.target)); }
-				else if(n != OK)
-				{
-					creep.memory.target = undefined;
-					creep.memory.task = refill;
-				}*/
-			}
-			else if (creep.memory.task == tasks.build)
-			{
-				// Build
-				n = creep.build(Game.getObjectById(creep.memory.target));
-				/*if(n == ERR_NOT_IN_RANGE) { creep.moveTo(Game.getObjectById(creep.memory.target)); }
-				else if(n != OK)
-				{
-					creep.memory.target = undefined;
-					creep.memory.task = refill;
-				}*/
-			}
-			else if (creep.memory.task == tasks.upgrade)
-			{
-				// Upgrade
-				n = creep.upgradeController(Game.getObjectById(creep.memory.target));
-				/*if(n == ERR_NOT_IN_RANGE) { creep.moveTo(Game.getObjectById(creep.memory.target)); }
-				else if(n != OK)
-				{
-					creep.memory.target = undefined;
-					creep.memory.task = refill;
-				}*/
-			}
-			if(n == ERR_NOT_IN_RANGE) { creep.moveTo(Game.getObjectById(creep.memory.target)); }
-			else if(n != OK)
-			{
-				creep.memory.target = undefined;
-				creep.memory.task = tasks.refill;
-			}
+			// Repair
+			if(_target.hits == _target.hitsMax) { creep.memory.task = tasks.none; }
+			else { n = creep.repair(Game.getObjectById(creep.memory.target)); }
+		}
+		else if (creep.memory.task == tasks.build)
+		{
+			// Build
+			n = creep.build(Game.getObjectById(creep.memory.target));
+		}
+		else if (creep.memory.task == tasks.upgrade)
+		{
+			// Upgrade
+			n = creep.upgradeController(Game.getObjectById(creep.memory.target));
+		}
+		if(n == ERR_NOT_IN_RANGE) { creep.moveTo(Game.getObjectById(creep.memory.target)); }
+		else if(n != OK)
+		{
+			creep.memory.target = undefined;
+			creep.memory.task = tasks.none;
 		}
 	}
 }
