@@ -71,7 +71,8 @@ function bodyCost(body)
 	return _cost;
 }
 
-const states = {mining: 0, working: 1, mineral: 2}
+const states = {mining: 0, working: 1, mineral: 2};
+const tasks = {none: 0, upgrade: 1, build: 2, repair: 3, refill: 4};
 
 function setState(creep)
 {
@@ -151,10 +152,10 @@ function runMiner(creep)
 		for(let id in Memory.rooms[room].energyMines)
 		{
 			let check = true;
-			for(let c in Memory.creeps)
+			for(let c in Game.creeps)
 			{
 				if(c == creep.name) { continue; }
-				if(Memory.creeps[c].role == 'miner' && Memory.creeps[c].target == id)
+				if(Game.creeps[c].memory.role == 'miner' && Game.creeps[c].memory.target == id)
 				{
 					check = false;
 					break;
@@ -221,24 +222,109 @@ function runStorer(creep)
 
 function runWorker(creep)
 {
-	if(creep.store[RESOURCE_ENERGY] == 0)
+	if(creep.memory.task == tasks.refill)
 	{
-		let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_CONTAINER && s.store[RESOURCE_ENERGY] >= creep.store.getCapacity()});
-		//if(!target) { target = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE) }
-		//console.log('worker target: ' + target);
-		if(target) { if(creep.withdraw(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+		if(creep.store.getFreeCapacity() == 0)
+		{
+			creep.memory.task = tasks.none;
+			creep.memory.target = undefined;
+		}
+		else
+		{
+			let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES,
+				{filter: (r) => r.resourceType == RESOURCE_ENERGY && r.amount >= creep.store.getCapacity()});
+			if(target) { if(creep.pickup(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+			else
+			{
+				target = creep.pos.findClosestByPath(FIND_STRUCTURES,
+					{filter: (s) => s.structureType == STRUCTURE_CONTAINER && s.store[RESOURCE_ENERGY] >= creep.store.getCapacity()});
+				if(target) { if(creep.withdraw(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+				else
+				{
+					creep.memory.task = tasks.none;
+					creep.memory.target = undefined;
+				}
+			}
+		}
 	}
 	else
 	{
-		let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-                filter: (s) => s.hits < s.hitsMax && s.structureType != STRUCTURE_WALL && s.structureType != STRUCTURE_RAMPART
-            });
-		if (target) { if (creep.repair(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
-		else
+		if(!creep.memory.task) { creep.memory.task = tasks.upgrade; }
+		if(!creep.memory.target) // Find a target and task
 		{
+			// Look for a structure to repair (not being repaired already)
+			let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s)
+				{
+					for(let _c in Game.creeps)
+					{
+						//if _c == creep.name { continue; }
+						if(Memory.creeps[_c].role == 'worker' && Memory.creeps[_c].target == s.id) { return(false); }
+					}
+					return(s.hits < s.hitsMax && s.structureType != STRUCTURE_WALL && s.structureType != STRUCTURE_RAMPART);
+				}});
+			if(target)
+			{
+				creep.memory.target = target.id;
+				creep.memory.task = tasks.repair;
+				return(OK);
+			}
+			// Look for a site to build
 			target = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
-			if(target) { if(creep.build(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
-			else { upgradeController(creep); }
+			if(target)
+			{
+				creep.memory.target = target.id;
+				creep.memory.task = tasks.build;
+				return(OK);
+			}
+			// Upgrade the controller
+			creep.memory.target = creep.room.controller.id;
+			creep.memory.task = tasks.upgrade;
+			return(OK);
+		}
+		else // Execute task
+		{
+			let n = ERR_INVALID_TARGET;
+			let _target = Game.getObjectById(creep.memory.target);
+			if(creep.memory.task == tasks.repair)
+			{
+				// Repair
+				if(_target.hits == _target.hitsMax) { n = ERR_INVALID_TARGET; }
+				else { n = creep.repair(Game.getObjectById(creep.memory.target)); }
+				/*if(n == ERR_NOT_IN_RANGE) { creep.moveTo(Game.getObjectById(creep.memory.target)); }
+				else if(n != OK)
+				{
+					creep.memory.target = undefined;
+					creep.memory.task = refill;
+				}*/
+			}
+			else if (creep.memory.task == tasks.build)
+			{
+				// Build
+				n = creep.build(Game.getObjectById(creep.memory.target));
+				/*if(n == ERR_NOT_IN_RANGE) { creep.moveTo(Game.getObjectById(creep.memory.target)); }
+				else if(n != OK)
+				{
+					creep.memory.target = undefined;
+					creep.memory.task = refill;
+				}*/
+			}
+			else if (creep.memory.task == tasks.upgrade)
+			{
+				// Upgrade
+				n = creep.upgradeController(Game.getObjectById(creep.memory.target));
+				/*if(n == ERR_NOT_IN_RANGE) { creep.moveTo(Game.getObjectById(creep.memory.target)); }
+				else if(n != OK)
+				{
+					creep.memory.target = undefined;
+					creep.memory.task = refill;
+				}*/
+			}
+			if(n == ERR_NOT_IN_RANGE) { creep.moveTo(Game.getObjectById(creep.memory.target)); }
+			else if(n != OK)
+			{
+				creep.memory.target = undefined;
+				creep.memory.task = tasks.refill;
+			}
 		}
 	}
 }
@@ -458,7 +544,7 @@ function addRole(_role)
 
 addRole(new Role('miner', 2, minerBody, runMiner));
 addRole(new Role('storer', 3, storerBody, runStorer));
-addRole(new Role('worker', 5, workerBody, runWorker));
+addRole(new Role('worker', 6, workerBody, runWorker, 6));
 addRole(new Role('harvester', 0, workerBody, runHarvester));
 addRole(new Role('upgrader', 0, workerBody, runUpgrader));
 addRole(new Role('builder', 0, workerBody, runBuilder));
