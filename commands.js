@@ -58,7 +58,7 @@ function spawn(args)
 	}
 	let role = roles[args[arg_count]]
 	let bodyLvl = (args.length > (arg_count+1)) ? parseInt(args[arg_count+1]) : Memory.roles[role].body.lvl;
-	let n = role.generate(Memory.default.spawn, bodyLvl);
+	let n = role.generate(spawn_name, bodyLvl);
 	console.log('spawn: ' + n);
 }
 

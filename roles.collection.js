@@ -556,10 +556,10 @@ Role.prototype.bodyCost = function(lvl = 0)
 Role.prototype.generate = function(_spawn_name, _body_lvl, _name)
 {
 	let spawn = _spawn_name ? Game.spawns[_spawn_name] : Game.spawns[Memory.default.spawn];
-	let gen_name = (_name ? _name : (this.name + "_" + Game.time));
-	let gen_body_lvl = (_body_lvl ? _body_lvl : Memory.roles[this.name].body.lvl);
+	let gen_name = _name ? _name : (this.name + "_" + Game.time);
+	let gen_body_lvl = _body_lvl ? _body_lvl : Memory.roles[this.name].body.lvl;
 	let gen_body = this.body(gen_body_lvl);
-	return spawn.spawnCreep(gen_body, gen_name, {memory: {role: this.name, state: states.mining}});
+	return spawn.spawnCreep(gen_body, gen_name, {memory: {role: this.name}});
 }
 
 var roles = {}

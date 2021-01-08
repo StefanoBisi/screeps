@@ -39,7 +39,7 @@ module.exports.loop = function ()
 			try
 			{
 				let room = Game.rooms[room_name];
-				if(room.controller.my)
+				if(room.controller.my && Memory.rooms[room_name] && Memory.rooms[room_name].auto)
 				{
 					for(role_name in roles)
 					{
@@ -70,9 +70,5 @@ module.exports.loop = function ()
     }
 	
 	var towers = _.filter(Game.structures, s => s.structureType == STRUCTURE_TOWER);
-    // for each tower
-    for (let tower of towers) {
-        // run tower logic
-        tower.defend();
-    }
+    for (let tower of towers) { tower.defend(); }
 }
