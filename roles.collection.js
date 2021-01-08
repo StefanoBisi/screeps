@@ -246,7 +246,11 @@ function runWorker(creep)
 			{
 				// Handle "no miner(s)" case
 				let target = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
-				if(target){ if(creep.harvest(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+				if(target)
+				{
+					if(creep.harvest(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); }
+					return(OK);
+				}
 			}
 			let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES,
 				{filter: (r) => r.resourceType == RESOURCE_ENERGY && r.amount >= creep.store.getCapacity()});
@@ -276,6 +280,13 @@ function runWorker(creep)
 		if(creep.store.getUsedCapacity() == 0) { creep.memory.task = tasks.refill; }
 		if(creep.memory.task == tasks.none) // Find a target and task
 		{
+			// If the controller's timer is expiring, upgrade
+			if(creep.room.controller.ticksToDowngrade <= 1000)
+			{
+				creep.memory.target = creep.room.controller.id;
+				creep.memory.task = tasks.upgrade;
+				return(OK);
+			}
 			// If storers are missing, act like a harvester
 			if(Memory.rooms[creep.room.name].roles.storer.count == 0)
 			{
