@@ -151,7 +151,7 @@ function runMiner(creep)
 		else
 		{
 			if(creep.pos != container.pos) { creep.moveTo(container); }
-			if(source.energy > 0) { creep.harvest(source); }
+			if(source.energy > 0 && container.store.getFreeCapacity() > 0) { creep.harvest(source); }
 
 		}
 	}
@@ -568,7 +568,7 @@ function addRole(_role) { roles[_role.name] = _role; }
 
 addRole(new Role('miner', 0, minerBody, runMiner));
 addRole(new Role('storer', 0, storerBody, runStorer));
-addRole(new Role('worker', 3, workerBody, runWorker, 0));
+addRole(new Role('worker', 2, workerBody, runWorker, 0));
 addRole(new Role('harvester', 0, workerBody, runHarvester));
 addRole(new Role('upgrader', 0, workerBody, runUpgrader));
 addRole(new Role('builder', 0, workerBody, runBuilder));

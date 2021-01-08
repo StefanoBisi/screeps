@@ -28,7 +28,7 @@ function roomsReport()
 	console.log(out);
 }
 
-function cleanDebug()
+function clearDebug()
 {
 	let out = 'Deleted:';
 	for(let entry in Memory)
@@ -177,7 +177,7 @@ module.exports =
 		let args = cmd.split(" ");
 		if(args[0] == 'roles_report'){ rolesReport(); }
 		else if(args[0] == 'rooms_report') { roomsReport(); }
-		else if(args[0] == 'clean_debug') { cleanDebug(); }
+		else if(args[0] == 'clear_debug') { clearDebug(); }
 		else if(args[0] == 'spawn') { spawn(args); }
 		else if(args[0] == 'analyze_room') { analyzeRoom(args); }
 		else { console.log('Command not recognized'); }
