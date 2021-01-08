@@ -57,7 +57,7 @@ function spawn(args)
 		arg_count += 1;
 	}
 	let role = roles[args[arg_count]]
-	let bodyLvl = (args.length > (arg_count+1)) ? parseInt(args[arg_count+1]) : Memory.roles[role].body.lvl;
+	let bodyLvl = (args.length > (arg_count+1)) ? parseInt(args[arg_count+1]) : Memory.roles[role.name].body.lvl;
 	let n = role.generate(spawn_name, bodyLvl);
 	console.log('spawn: ' + n);
 }
@@ -92,13 +92,16 @@ function analyzeRoom(args)
 		if(!Memory.rooms[args[1]].roles[role]){ Memory.rooms[args[1]].roles[role] = {}; }
 		if(!Memory.rooms[args[1]].roles[role].body){ Memory.rooms[args[1]].roles[role].body = {}; }
 		Memory.rooms[args[1]].roles[role].body.lvl = Memory.roles[role].body.lvl;
+		Memory.rooms[args[1]].roles[role].required = 0;
 	}
 	let room = Game.rooms[args[1]];
 	
 	try{
+		Memory.rooms[args[1]].auto = true;
 		// Default Spawn
 		let spawns = room.find(FIND_MY_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_SPAWN});
-		Memory.rooms[args[1]].default.spawn = spawns[0].name;
+		if(spawns.length > 0) { Memory.rooms[args[1]].default.spawn = spawns[0].name; }
+		else { Memory.rooms[args[1]].auto = false; }
 		//Sources and Containers
 		Memory.rooms[args[1]].sources = {};
 		let sources = room.find(FIND_SOURCES);
@@ -109,17 +112,16 @@ function analyzeRoom(args)
 			let source = sources[i];
 			Memory.rooms[args[1]].sources[source.id] = {};
 			let containers = source.pos.findInRange(FIND_STRUCTURES, 1, {filter: (s) => s.structureType == STRUCTURE_CONTAINER});
-			if(containers)
+			if(containers.length > 0)
 			{
 				Memory.rooms[args[1]].sources[source.id].container = containers[0].id;
 				mines_count += 1;
 			}
 		}
 		Memory.rooms[args[1]].roles.miner.required = mines_count;
-		Memory.rooms[args[1]].roles.miner.body.lvl = 4;
 		
 		// Roles Requirements
-		// Storers
+		// Miners
 		let lvl = 0;
 		let cost = 0;
 		do
@@ -128,10 +130,21 @@ function analyzeRoom(args)
 			let plus_cost = roles['storer'].bodyCost(lvl);
 			if (plus_cost == cost) { break; }
 			else { cost = plus_cost; }
-		} while (cost < (0.7 * room.energyCapacityAvailable));
-		if(mines_count == 0) { Memory.rooms[args[1]].roles.storer.required = 0; }
-		else { Memory.rooms[args[1]].roles.storer.required = Math.ceil((room.energyCapacityAvailable /
-			(200 * _.sum(roles['storer'].body(lvl), (b) => b == CARRY)))); } // 200 = 50 * 4
+		} while (cost < room.energyCapacityAvailable);
+		lvl = (lvl == 0) ? 0 : (lvl - 1);
+		Memory.rooms[args[1]].roles.miner.body.lvl = lvl;
+		// Storers
+		lvl = 0;
+		cost = 0;
+		do
+		{
+			lvl += 1;
+			let plus_cost = roles['storer'].bodyCost(lvl);
+			if (plus_cost == cost) { break; }
+			else { cost = plus_cost; }
+		} while (cost < (0.8 * room.energyCapacityAvailable));
+		lvl = (lvl == 0) ? 0 : (lvl - 1);
+		Memory.rooms[args[1]].roles.storer.required =  mines_count;
 		Memory.rooms[args[1]].roles.storer.body = {};
 		Memory.rooms[args[1]].roles.storer.body.lvl = lvl;
 		// Workers
@@ -143,13 +156,13 @@ function analyzeRoom(args)
 			let plus_cost = roles['worker'].bodyCost(lvl);
 			if (plus_cost == cost) { break; }
 			else { cost = plus_cost; }
-		} while (cost < (0.7 * room.energyCapacityAvailable))
-		Memory.rooms[args[1]].roles.worker.required = Math.ceil((600 * Memory.rooms[args[1]].sources.total / // 900 = 0.3 * 3000
-			(50 * _.sum(roles['worker'].body(lvl), (b) => b == CARRY))));
+		} while (cost < (0.8 * room.energyCapacityAvailable));
+		lvl = (lvl == 0) ? 0 : (lvl - 1);
+		Memory.rooms[args[1]].roles.worker.required = 2 * Memory.rooms[args[1]].sources.total;
 		Memory.rooms[args[1]].roles.worker.body = {};
 		Memory.rooms[args[1]].roles.worker.body.lvl = lvl;
 		// Defenders
-		if(room.energyCapacityAvailable >= 500) { Memory.rooms[args[1]].roles.defender.required = 3; }
+		if(room.energyCapacityAvailable >= 500) { Memory.rooms[args[1]].roles.defender.required = 1; }
 		else { Memory.rooms[args[1]].roles.defender.required = 0; }
 		Memory.rooms[args[1]].roles.defender.body.lvl = 1;
 		
@@ -158,12 +171,12 @@ function analyzeRoom(args)
 			//TODO
 		}
 		
-		Memory.rooms[args[1]].auto = true;
 		console.log('Room ' + args[1] + ' computed successfully');
 	}
 	catch(err)
 	{
-		console.log('Error analyzing room ' + args[1] + ':\n' + err);
+		if(err.stack) { console.log('Error analyzing room ' + args[1] + ':\n' + err.stack); }
+		else { console.log('Error analyzing room ' + args[1] + ':\n' + err); }
 		Memory.rooms[args[1]].auto = false;
 	}
 }

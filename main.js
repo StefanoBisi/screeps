@@ -52,12 +52,12 @@ module.exports.loop = function ()
 							let role = roles[role_name];
 							let lvl =  Memory.rooms[room.name].roles[role_name].body.lvl;
 							let r = role.generate(spawn_name, lvl);
-							if(!(r < 0)) { console.log('Generating ' + role_name + ' creep'); }
+							if(!(r < 0)) { console.log(room_name + ' - Generating ' + role_name + ' creep'); }
 						}
 					}
 				}
 			}
-			catch(err) { console.log('ERROR - room ' + room_name + ':\n' + err); }
+			catch(err) { console.log('ERROR - room ' + room_name + ':\n' + err.stack); }
 		}
 	}
 

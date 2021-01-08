@@ -76,21 +76,19 @@ const tasks = {none: 0, upgrade: 1, build: 2, repair: 3, store:4, refill: 5};
 
 function setState(creep)
 {
-	for(let min in creep.store)
+	if(creep.room.name != 'E13S47')
 	{
-		if(min != RESOURCE_ENERGY)
-		{
-			let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s){return(s.structureType == STRUCTURE_CONTAINER);}});
-			if(target)
-			{
-				creep.memory.state = states.mineral;
-				if(creep.transfer(target, min) == ERR_NOT_IN_RANGE)
-				{
-					creep.moveTo(target);
-				}
-				return 0;
-			}
-		}
+		creep.moveTo(creep.pos.findClosestByRange(creep.room.findExitTo('E13S47')));
+		return(OK);
+	}
+	else if (creep.pos.y == 0)
+	{
+		creep.move(BOTTOM);
+		//return(OK);
+	}
+	if(creep.memory.state == undefined)
+	{
+		creep.memory.state = states.mining;
 	}
 	if(creep.memory.state == states.working && creep.store[RESOURCE_ENERGY] == 0)
 	{
