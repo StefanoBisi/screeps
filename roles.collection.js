@@ -1,5 +1,5 @@
 if(!Memory.roles) { Memory.roles = {}; }
-var defaultBodyLvl = 4;
+var defaultBodyLvl = 0;
 
 function minerBody(lvl = 0)
 {
@@ -329,7 +329,7 @@ function runWorker(creep)
 		if(creep.memory.task == tasks.store)
 		{
 			// Store
-			n = creep.transfer(structure, RESOURCE_ENERGY);
+			n = creep.transfer(_target, RESOURCE_ENERGY);
 		}
 		if(creep.memory.task == tasks.repair)
 		{
@@ -555,9 +555,9 @@ Role.prototype.bodyCost = function(lvl = 0)
 
 Role.prototype.generate = function(_spawn_name, _body_lvl, _name)
 {
-	let spawn = (_spawn_name != undefined) ? Game.spawns[_spawn_name] : Game.spawns[Memory.default.spawn];
-	let gen_name = ((_name != undefined) ? _name : (this.name + "_" + Game.time));
-	let gen_body_lvl = ((_body_lvl != undefined) ? _body_lvl : Memory.roles[this.name].body.lvl);
+	let spawn = _spawn_name ? Game.spawns[_spawn_name] : Game.spawns[Memory.default.spawn];
+	let gen_name = (_name ? _name : (this.name + "_" + Game.time));
+	let gen_body_lvl = (_body_lvl ? _body_lvl : Memory.roles[this.name].body.lvl);
 	let gen_body = this.body(gen_body_lvl);
 	return spawn.spawnCreep(gen_body, gen_name, {memory: {role: this.name, state: states.mining}});
 }
@@ -566,14 +566,14 @@ var roles = {}
 
 function addRole(_role) { roles[_role.name] = _role; }
 
-addRole(new Role('miner', 2, minerBody, runMiner));
-addRole(new Role('storer', 3, storerBody, runStorer));
-addRole(new Role('worker', 4, workerBody, runWorker, 6));
+addRole(new Role('miner', 0, minerBody, runMiner));
+addRole(new Role('storer', 0, storerBody, runStorer));
+addRole(new Role('worker', 3, workerBody, runWorker, 0));
 addRole(new Role('harvester', 0, workerBody, runHarvester));
 addRole(new Role('upgrader', 0, workerBody, runUpgrader));
 addRole(new Role('builder', 0, workerBody, runBuilder));
 addRole(new Role('repairer', 0, workerBody, runRepairer));
-addRole(new Role('defender', 3, defenderBody, runDefender, 1));
+addRole(new Role('defender', 0, defenderBody, runDefender, 1));
 addRole(new Role('trooper', 0, trooperBody, runTrooper, 0));
 addRole(new Role('claimer', 0, claimerBody, runClaimer, 0));
 

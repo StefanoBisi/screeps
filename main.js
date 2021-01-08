@@ -34,7 +34,6 @@ module.exports.loop = function ()
 	
 	if((Game.time % 11) == 0)
 	{
-		// TODO: Evitare ripetizioni tra i due loop (magari creare pila di spawn da fare)
 		for(room_name in Game.rooms)
 		{
 			try
@@ -46,37 +45,19 @@ module.exports.loop = function ()
 					{
 						let n = _.sum(room.find(FIND_CREEPS), (c) => c.memory.role == role_name);
 						Memory.rooms[room_name].roles[role_name].count = n;
-					}
-				}
-			}
-			catch(err) { console.log('ERROR - room ' + room_name + ':\n' + err); }
-		}
-		for(let spawn_name in Game.spawns)
-		{
-			try
-			{
-				if(!Game.spawns[spawn_name].spawning)
-				{
-					let room = Game.spawns[spawn_name].room;
-					for(let role_name in roles)
-					{
-						let role = roles[role_name];
-						let n = _.sum(room.find(FIND_CREEPS), (c) => c.memory.role == role_name);
-						let req = (Memory.rooms[room.name].roles[role_name]) ? Memory.rooms[room.name].roles[role_name].required : Memory.roles[role_name].required;
-						if(n < req)
+						let req = Memory.rooms[room.name].roles[role_name].required;
+						let spawn_name = Memory.rooms[room.name].default.spawn;
+						if(n < req && !Game.spawns[spawn_name].spawning)
 						{
-							let lvl = (Memory.rooms[room.name].roles[role_name]) ? Memory.rooms[room.name].roles[role_name].body.lvl : Memory.roles[role_name].body.lvl;
-							let r = role.generate(spawn_name);
-							if(!(r < 0))
-							{
-								console.log('Generating ' + role_name + ' creep');
-							}
-							break;
+							let role = roles[role_name];
+							let lvl =  Memory.rooms[room.name].roles[role_name].body.lvl;
+							let r = role.generate(spawn_name, lvl);
+							if(!(r < 0)) { console.log('Generating ' + role_name + ' creep'); }
 						}
 					}
 				}
 			}
-			catch(err) { console.log('ERROR - spawn ' + spawn_name + ':\n' + err); }
+			catch(err) { console.log('ERROR - room ' + room_name + ':\n' + err); }
 		}
 	}
 
