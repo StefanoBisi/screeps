@@ -2,19 +2,29 @@ var roles = require('roles.collection');
 
 function rolesReport()
 {
+	const ind = '\n  ';
 	let out = 'Role Report:';
-	for(let role_name in roles)
+	for(let room_name in Game.rooms)
 	{
-		let n = _.sum(Game.creeps, (c) => c.memory.role == role_name);
-		out += '\n' + role_name + ': ' + n;
+		let room = Game.rooms[room_name];
+		if(room.controller.my)
+		{
+			out += '\n' + room.name;
+			let creeps = room.find(FIND_MY_CREEPS);
+			for(let role_name in roles)
+			{
+				let n = _.sum(creeps, (c) => c.memory.role == role_name);
+				out += ind + role_name + ': ' + n;
+			}
+		}
 	}
 	console.log(out);
 }
 
 function roomsReport()
 {
-	let out = 'Rooms Report:';
 	const ind = '\n  ';
+	let out = 'Rooms Report:';
 	for(let room_name in Game.rooms)
 	{
 		let room = Game.rooms[room_name];
@@ -22,7 +32,7 @@ function roomsReport()
 		{
 			out += '\n' + room.name;
 			out += ind + 'energy: ' + room.energyAvailable + '/' + room.energyCapacityAvailable;
-			out += ind + 'creeps: ' + room.find(FIND_CREEPS).length;
+			out += ind + 'creeps: ' + room.find(FIND_MY_CREEPS).length;
 		}
 	}
 	console.log(out);
