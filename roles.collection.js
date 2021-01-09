@@ -71,61 +71,7 @@ function bodyCost(body)
 	return _cost;
 }
 
-const states = {mining: 0, working: 1, mineral: 2};
 const tasks = {none: 0, upgrade: 1, build: 2, repair: 3, store:4, refill: 5};
-
-function setState(creep)
-{
-	if(creep.room.name != 'E13S47')
-	{
-		creep.moveTo(creep.pos.findClosestByRange(creep.room.findExitTo('E13S47')));
-		return(OK);
-	}
-	else if (creep.pos.y == 0)
-	{
-		creep.move(BOTTOM);
-		//return(OK);
-	}
-	if(creep.memory.state == undefined)
-	{
-		creep.memory.state = states.mining;
-	}
-	if(creep.memory.state == states.working && creep.store[RESOURCE_ENERGY] == 0)
-	{
-		creep.memory.state = states.mining;
-	}
-	if(creep.memory.state == states.mining && creep.store.getFreeCapacity() == 0)
-	{
-		creep.memory.state = states.working;
-	}
-}
-
-function mineEnergy(creep)
-{
-	let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES);
-	if(target)
-	{
-		if(creep.pickup(target) == ERR_NOT_IN_RANGE)
-		{
-			creep.moveTo(target);
-		}
-	}
-	else
-	{
-		target = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
-		if(target != undefined)
-		{
-			if(creep.harvest(target) == ERR_NOT_IN_RANGE)
-			{
-				let n = creep.moveTo(target);
-			}
-		}
-		else if (creep.store[RESOURCE_ENERGY] > 0)
-		{
-			creep.memory.state = states.working;
-		}
-	}
-}
 
 function upgradeController(creep)
 {
@@ -365,95 +311,6 @@ function runWorker(creep)
 	}
 }
 
-function runHarvester(creep)
-{
-	setState(creep);
-	if(creep.memory.state == states.working)
-	{
-		let structure = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
-				filter: (s) => (s.structureType == STRUCTURE_SPAWN
-					|| s.structureType == STRUCTURE_EXTENSION
-					|| s.structureType == STRUCTURE_TOWER)
-					&& s.energy < s.energyCapacity
-			});
-		
-		if(structure == undefined) { upgradeController(creep); }
-		else
-		{
-			if(creep.transfer(structure, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE)
-			{
-				creep.moveTo(structure);
-			}			
-		}
-	}
-	else if(creep.memory.state == states.mining) { mineEnergy(creep); }
-}
-
-function runUpgrader(creep)
-{
-	
-	setState(creep);
-	if(creep.memory.state == states.working) { upgradeController(creep); }
-	else if(creep.memory.state == states.mining){ mineEnergy(creep); }
-}
-
-function runBuilder(creep)
-{
-	setState(creep);
-	if(creep.memory.state == states.working)
-	{
-		var target = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
-		if(target != undefined)
-		{
-			if(creep.build(target) == ERR_NOT_IN_RANGE)
-			{
-				creep.moveTo(target);
-			}
-		}
-		else
-		{
-			upgradeController(creep);
-		}
-	}
-	else if(creep.memory.state == states.mining)
-	{
-		mineEnergy(creep);
-	}
-}
-
-function runRepairer(creep)
-{
-	setState(creep);
-	if(creep.memory.state == states.working)
-	{
-		let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-                filter: (s) => s.hits < s.hitsMax && s.structureType != STRUCTURE_WALL && s.structureType != STRUCTURE_RAMPART
-            });
-		if (target != undefined)
-		{
-			if (creep.repair(target) == ERR_NOT_IN_RANGE) {
-				creep.moveTo(target);
-			}
-		}
-		else
-		{
-			target = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
-			if(target != undefined)
-			{
-				if(creep.build(target) == ERR_NOT_IN_RANGE)
-				{
-					creep.moveTo(target);
-				}
-			}
-			else
-			{
-				upgradeController(creep);
-			}
-		}	
-	}
-	else if(creep.memory.state == states.mining) { mineEnergy(creep); }
-}
-
 function runDefender(creep)
 {
 	let target = creep.pos.findClosestByPath(FIND_HOSTILE_CREEPS);
@@ -578,10 +435,6 @@ function addRole(_role) { roles[_role.name] = _role; }
 addRole(new Role('miner', 0, minerBody, runMiner));
 addRole(new Role('storer', 0, storerBody, runStorer));
 addRole(new Role('worker', 2, workerBody, runWorker, 0));
-addRole(new Role('harvester', 0, workerBody, runHarvester));
-addRole(new Role('upgrader', 0, workerBody, runUpgrader));
-addRole(new Role('builder', 0, workerBody, runBuilder));
-addRole(new Role('repairer', 0, workerBody, runRepairer));
 addRole(new Role('defender', 0, defenderBody, runDefender, 1));
 addRole(new Role('trooper', 0, trooperBody, runTrooper, 0));
 addRole(new Role('claimer', 0, claimerBody, runClaimer, 0));
