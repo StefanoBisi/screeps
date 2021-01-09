@@ -140,9 +140,10 @@ function runStorer(creep)
 		{
 			target = creep.pos.findClosestByPath(FIND_STRUCTURES,
 				{filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] >= creep.store.getCapacity()});
-			if(!target) { target = creep.pos.findClosestByPath(FIND_TOMBSTONES, {filter: (t) => t.store.getUsedCapacity() > 0}); }
 			if(!target) { target = creep.pos.findClosestByPath(FIND_STRUCTURES,
 				{filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] > 0}); }
+			if(!target) { target = creep.pos.findClosestByPath(FIND_TOMBSTONES, {filter: (t) => t.store.getUsedCapacity() > 0}); }
+			if(!target) { target = creep.pos.findClosestByPath(FIND_RUINS, {filter: (t) => t.store.getUsedCapacity() > 0}); }
 			if(target) { if(creep.withdraw(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
 		}
 	}
@@ -164,7 +165,17 @@ function runStorer(creep)
 			{
 				if(min != RESOURCE_ENERGY)
 				{
-					let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {filter: function(s){return(s.structureType == STRUCTURE_CONTAINER);}});
+					let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {filter: function(s)
+						{
+							if(s.structureType == STRUCTURE_CONTAINER)
+							{
+								let mine = target.pos.findInRange(FIND_STRUCTURES, 1, {filter: (s) => s.structureType == STRUCTURE_CONTAINER}).length > 0;
+								return !mine
+							}
+							else { return false; }
+							
+							return(s.structureType == STRUCTURE_CONTAINER);
+						}});
 					if(target)
 					{
 						creep.memory.state = states.mineral;
