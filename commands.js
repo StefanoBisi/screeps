@@ -130,6 +130,16 @@ function analyzeRoom(args)
 		}
 		Memory.rooms[args[1]].roles.miner.required = mines_count;
 		
+		// Distances
+		/*let source_to_controller = [];
+		let source_to_spawn = [];
+		for(let i in sources)
+		{
+			console.log(sources[i].pos.x + ' ' + sources[i].pos.y )
+			source_to_controller.push(PathFinder.search(sources[i].pos, {target: room.controller, range: 1}));
+			if(spawns.length > 0) { source_to_spawn.push(PathFinder.search(sources[i].pos, {target: spawns[0], range: 1})); }
+		}*/
+		
 		// Roles Requirements
 		// Miners
 		let lvl = 0;
@@ -169,12 +179,17 @@ function analyzeRoom(args)
 		} while (cost < (0.8 * room.energyCapacityAvailable));
 		lvl = (lvl == 0) ? 0 : (lvl - 1);
 		Memory.rooms[args[1]].roles.worker.required = 2 * Memory.rooms[args[1]].sources.total;
+		/*let workerTime = 50;
+		for(let i in source_to_controller) { workerTime += source_to_controller[i].path.length; }
+		let minerTime = Math.round(lvl * 25 / Memory.rooms[args[1]].roles.miner.body.lvl);
+		Memory.rooms[args[1]].roles.worker.required = workerTime / minerTime;*/
 		Memory.rooms[args[1]].roles.worker.body = {};
 		Memory.rooms[args[1]].roles.worker.body.lvl = lvl;
 		// Defenders
-		if(room.energyCapacityAvailable >= 500) { Memory.rooms[args[1]].roles.defender.required = 1; }
+		// TODO: Numero minimo e livello dinamici
+		if(room.energyCapacityAvailable >= 500) { Memory.rooms[args[1]].roles.defender.required = 3; }
 		else { Memory.rooms[args[1]].roles.defender.required = 0; }
-		Memory.rooms[args[1]].roles.defender.body.lvl = 1;
+		Memory.rooms[args[1]].roles.defender.body.lvl = 2;
 		
 		if(args[2] && args[2] == 'build')
 		{
