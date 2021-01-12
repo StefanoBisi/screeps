@@ -113,10 +113,8 @@ function runMiner(creep)
 			else
 			{
 				if(creep.pos != container.pos) { creep.moveTo(container); }
-				if(mineral.mineralAmount > 0
-					&& extractor.cooldown == 0
-					&& container.store.getFreeCapacity() > 0)
-					{ creep.harvest(extractor); }
+				if(mineral.mineralAmount > 0 && container.store.getFreeCapacity() > 0)
+					{ creep.harvest(mineral); }
 
 			}
 		}
@@ -142,13 +140,13 @@ function runMiner(creep)
 			{
 				target = id;
 				creep.memory.task = tasks.harvest;
-				break;
+				return(OK);
 			}
 		}
-		if(!target && Memory.rooms[room.name].mineral.ready) // Minerali
+		if(!target && Memory.rooms[room].mineral.ready) // Minerali
 		{
 			let check = true;
-			let id = Memory.rooms[room.name].mineral.id;
+			let id = Memory.rooms[room].mineral.id;
 			for(let c in Game.creeps)
 			{
 				if(c == creep.name) { continue; }
@@ -190,6 +188,14 @@ function runStorer(creep)
 			if(!target) { target = creep.pos.findClosestByPath(FIND_RUINS, {filter: (t) => t.store.getUsedCapacity() > 0}); }
 			if(target) { if(creep.withdraw(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
 		}
+		else
+		{
+			if(Memory.rooms[creep.room.name].mineral.container)
+			{
+				let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.container);
+				if(container.store.getUsedCapacity() > 0) { creep.withdraw(container); }
+			}
+		}
 	}
 	else
 	{
@@ -211,10 +217,13 @@ function runStorer(creep)
 				{
 					let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {filter: function(s)
 						{
-							if(s.structureType == STRUCTURE_CONTAINER)
+							if(s.structureType == STRUCTURE_CONTAINER &&  s.store.getFreeCapacity() > 0)
 							{
-								let mine = target.pos.findInRange(FIND_STRUCTURES, 1, {filter: (s) => s.structureType == STRUCTURE_CONTAINER}).length > 0;
-								return !mine
+								return s.id != Memory.rooms[creep.room.name].mineral.container;
+							}
+							else if (s.structureType == STRUCTURE_STORAGE)
+							{
+								return s.store.getFreeCapacity() > 0;
 							}
 							else { return false; }
 							
