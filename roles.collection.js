@@ -71,7 +71,7 @@ function bodyCost(body)
 	return _cost;
 }
 
-const tasks = {none: 0, upgrade: 1, build: 2, repair: 3, store:4, refill: 5};
+const tasks = {none: 0, upgrade: 1, build: 2, repair: 3, store:4, refill: 5, harvest: 6, mine: 7};
 
 function upgradeController(creep)
 {
@@ -85,22 +85,45 @@ function runMiner(creep)
 {
 	if(creep.memory.target)
 	{
-		let source = Game.getObjectById(creep.memory.target);
-		let container = undefined;
-		if(source) { container = Game.getObjectById(Memory.rooms[source.room.name].sources[source.id].container); }
-		if(!source || !container)
+		if(creep.memory.task == tasks.harvest)
 		{
-			creep.memory.target = undefined;
-		}
-		else
-		{
-			if(creep.pos != container.pos) { creep.moveTo(container); }
-			if(source.energy > 0 && container.store.getFreeCapacity() > 0) { creep.harvest(source); }
+			let source = Game.getObjectById(creep.memory.target);
+			let container = undefined;
+			if(source) { container = Game.getObjectById(Memory.rooms[source.room.name].sources[source.id].container); }
+			if(!source || !container)
+			{
+				creep.memory.target = undefined;
+			}
+			else
+			{
+				if(creep.pos != container.pos) { creep.moveTo(container); }
+				if(source.energy > 0 && container.store.getFreeCapacity() > 0) { creep.harvest(source); }
 
+			}
+		}
+		else if (creep.memory.task == tasks.mine)
+		{
+			let mineral = Game.getObjectById(creep.memory.target);
+			let extractor = Game.getObjectById(Memory.rooms[creep.room.name].mineral.extractor);
+			let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.mine);
+			if(!extractor || !container)
+			{
+				creep.memory.target = undefined;
+			}
+			else
+			{
+				if(creep.pos != container.pos) { creep.moveTo(container); }
+				if(mineral.mineralAmount > 0
+					&& extractor.cooldown == 0
+					&& container.store.getFreeCapacity() > 0)
+					{ creep.harvest(extractor); }
+
+			}
 		}
 	}
 	else
 	{
+		let target = undefined;
 		let room = creep.room.name;
 		for(let id in Memory.rooms[room].sources)
 		{
@@ -117,10 +140,31 @@ function runMiner(creep)
 			}
 			if(check)
 			{
-				creep.memory.target = id;
+				target = id;
+				creep.memory.task = tasks.harvest;
 				break;
 			}
 		}
+		if(!target && Memory.rooms[room.name].mineral.ready) // Minerali
+		{
+			let check = true;
+			let id = Memory.rooms[room.name].mineral.id;
+			for(let c in Game.creeps)
+			{
+				if(c == creep.name) { continue; }
+				if(Game.creeps[c].memory.role == 'miner' && Game.creeps[c].memory.target == id)
+				{
+					check = false;
+					break;
+				}
+			}
+			if(check)
+			{
+				target = id;
+				creep.memory.task = tasks.mine;
+			}
+		}
+		creep.memory.target = target;
 	}
 }
 
@@ -436,7 +480,7 @@ Role.prototype.generate = function(_spawn_name, _body_lvl, _name)
 	let gen_name = _name ? _name : (this.name + "_" + Game.time);
 	let gen_body_lvl = _body_lvl ? _body_lvl : Memory.roles[this.name].body.lvl;
 	let gen_body = this.body(gen_body_lvl);
-	return spawn.spawnCreep(gen_body, gen_name, {memory: {role: this.name}});
+	return spawn.spawnCreep(gen_body, gen_name, {memory: {role: this.name, task: tasks.none}});
 }
 
 var roles = {}

@@ -128,7 +128,20 @@ function analyzeRoom(args)
 				mines_count += 1;
 			}
 		}
-		Memory.rooms[args[1]].roles.miner.required = mines_count;
+		// Mineral Mine
+		let mineral = room.find(FIND_MINERALS)[0];
+		Memory.rooms[args[1]].mineral = {};
+		Memory.rooms[args[1]].mineral.id = mineral.id;
+		let extractors = room.find(FIND_STRUCTURES, (s) => s.structureType == STRUCTURE_EXTRACTOR);
+		if(extractors.length > 0) { Memory.rooms[args[1]].mineral.extractor = extractors[0].id; }
+		let mines = mineral.pos.findInRange(FIND_STRUCTURES, 1,
+			{filter: (s) => s.structureType == STRUCTURE_CONTAINER});
+		if(mines.length > 0)
+		{
+			mines_count += 1;
+			Memory.rooms[args[1]].mineral.mine = mines[0].id;
+		}
+		Memory.rooms[args[1]].mineral.ready = (extractors.length > 0 && mines.length > 0);
 		
 		// Distances
 		/*let source_to_controller = [];
@@ -153,6 +166,7 @@ function analyzeRoom(args)
 		} while (cost < room.energyCapacityAvailable);
 		lvl = (lvl == 0) ? 0 : (lvl - 1);
 		Memory.rooms[args[1]].roles.miner.body.lvl = lvl;
+		Memory.rooms[args[1]].roles.miner.required = mines_count;
 		// Storers
 		lvl = 0;
 		cost = 0;
