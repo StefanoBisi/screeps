@@ -190,10 +190,13 @@ function runStorer(creep)
 		}
 		else
 		{
-			if(Memory.rooms[creep.room.name].mineral.container)
+			if(Memory.rooms[creep.room.name].mineral)
 			{
-				let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.container);
-				if(container.store.getUsedCapacity() > 0) { creep.withdraw(container); }
+				if(Memory.rooms[creep.room.name].mineral.container)
+				{
+					let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.container);
+					if(container.store.getUsedCapacity() > 0) { creep.withdraw(container); }
+				}
 			}
 		}
 	}

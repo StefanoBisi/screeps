@@ -65,7 +65,7 @@ module.exports.loop = function ()
 	{
         let creep = Game.creeps[name];
 		try { creep.runRole(); }
-		catch(err) { console.log('ERROR - creep ' + name + ' (role ' + creep.memory.role + '):\n' + err); }
+		catch(err) { console.log('ERROR - creep ' + name + ' (role ' + creep.memory.role + '):\n' + err.stack); }
 		
     }
 	
