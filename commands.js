@@ -134,14 +134,14 @@ function analyzeRoom(args)
 		Memory.rooms[args[1]].mineral.id = mineral.id;
 		let extractors = room.find(FIND_STRUCTURES, (s) => s.structureType == STRUCTURE_EXTRACTOR);
 		if(extractors.length > 0) { Memory.rooms[args[1]].mineral.extractor = extractors[0].id; }
-		let mines = mineral.pos.findInRange(FIND_STRUCTURES, 1,
+		let containers = mineral.pos.findInRange(FIND_STRUCTURES, 1,
 			{filter: (s) => s.structureType == STRUCTURE_CONTAINER});
-		if(mines.length > 0)
+		if(containers.length > 0)
 		{
 			mines_count += 1;
-			Memory.rooms[args[1]].mineral.mine = mines[0].id;
+			Memory.rooms[args[1]].mineral.container = containers[0].id;
 		}
-		Memory.rooms[args[1]].mineral.ready = (extractors.length > 0 && mines.length > 0);
+		Memory.rooms[args[1]].mineral.ready = (extractors.length > 0 && containers.length > 0);
 		
 		// Distances
 		/*let source_to_controller = [];

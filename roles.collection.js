@@ -188,14 +188,16 @@ function runStorer(creep)
 			if(!target) { target = creep.pos.findClosestByPath(FIND_RUINS, {filter: (t) => t.store.getUsedCapacity() > 0}); }
 			if(target) { if(creep.withdraw(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
 		}
-		else
+		if(!target)
 		{
 			if(Memory.rooms[creep.room.name].mineral)
 			{
 				if(Memory.rooms[creep.room.name].mineral.container)
 				{
 					let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.container);
-					if(container.store.getUsedCapacity() > 0) { creep.withdraw(container); }
+					let mineral_type = Game.getObjectById(Memory.rooms[creep.room.name].mineral.id).mineralType;
+					if(container.store.getUsedCapacity() > 0)
+						{ if(creep.withdraw(container, mineral_type) == ERR_NOT_IN_RANGE) {creep.moveTo(container); }; }
 				}
 			}
 		}
@@ -218,11 +220,13 @@ function runStorer(creep)
 			{
 				if(min != RESOURCE_ENERGY)
 				{
-					let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {filter: function(s)
+					let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s)
 						{
 							if(s.structureType == STRUCTURE_CONTAINER &&  s.store.getFreeCapacity() > 0)
 							{
-								return s.id != Memory.rooms[creep.room.name].mineral.container;
+								mineral_mine = s.id != Memory.rooms[creep.room.name].mineral.container;
+								energy_mine = s.pos.findInRange(FIND_SOURCES, 1).length == 0;
+								return mineral_mine && energy_mine;
 							}
 							else if (s.structureType == STRUCTURE_STORAGE)
 							{
@@ -234,7 +238,6 @@ function runStorer(creep)
 						}});
 					if(target)
 					{
-						creep.memory.state = states.mineral;
 						if(creep.transfer(target, min) == ERR_NOT_IN_RANGE) { creep.moveTo(target); }
 						return 0;
 					}
@@ -301,7 +304,8 @@ function runWorker(creep)
 				return(OK);
 			}
 			// If storers are missing, act like a harvester
-			if(Memory.rooms[creep.room.name].roles.storer.count == 0)
+			if(Memory.rooms[creep.room.name].roles.storer.count == 0
+				|| Memory.rooms[creep.room.name].roles.miner.count == 0)
 			{
 				let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
 				filter: (s) => (s.structureType == STRUCTURE_SPAWN
