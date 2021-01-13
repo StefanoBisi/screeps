@@ -140,7 +140,6 @@ function runMiner(creep)
 			{
 				target = id;
 				creep.memory.task = tasks.harvest;
-				return(OK);
 			}
 		}
 		if(!target && Memory.rooms[room].mineral.ready) // Minerali
@@ -168,6 +167,26 @@ function runMiner(creep)
 
 function runStorer(creep)
 {
+	let findMineralDeposit = function()
+	{
+		let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s)
+		{
+			if(s.structureType == STRUCTURE_CONTAINER &&  s.store.getFreeCapacity() > 0)
+			{
+				mineral_mine = s.id != Memory.rooms[creep.room.name].mineral.container;
+				energy_mine = s.pos.findInRange(FIND_SOURCES, 1).length == 0;
+				return mineral_mine && energy_mine;
+			}
+			else if (s.structureType == STRUCTURE_STORAGE)
+			{
+				return s.store.getFreeCapacity() > 0;
+			}
+			else { return false; }
+			
+			return(s.structureType == STRUCTURE_CONTAINER);
+		}});
+		return target;
+	}
 	let energyRequired = (creep.room.find(FIND_MY_STRUCTURES, {
 		filter: (s) => (s.structureType == STRUCTURE_SPAWN
 			|| s.structureType == STRUCTURE_EXTENSION
@@ -190,7 +209,7 @@ function runStorer(creep)
 		}
 		if(!target)
 		{
-			if(Memory.rooms[creep.room.name].mineral)
+			if(Memory.rooms[creep.room.name].mineral && findMineralDeposit())
 			{
 				if(Memory.rooms[creep.room.name].mineral.container)
 				{
@@ -220,7 +239,7 @@ function runStorer(creep)
 			{
 				if(min != RESOURCE_ENERGY)
 				{
-					let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s)
+					let target = findMineralDeposit();/*creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s)
 						{
 							if(s.structureType == STRUCTURE_CONTAINER &&  s.store.getFreeCapacity() > 0)
 							{
@@ -235,7 +254,7 @@ function runStorer(creep)
 							else { return false; }
 							
 							return(s.structureType == STRUCTURE_CONTAINER);
-						}});
+						}});*/
 					if(target)
 					{
 						if(creep.transfer(target, min) == ERR_NOT_IN_RANGE) { creep.moveTo(target); }

@@ -56,6 +56,7 @@ module.exports.loop = function ()
 							if(!(r < 0))
 							{
 								console.log(room_name + ' - Generating ' + role_name + ' creep');
+								creeps_tot += 1;
 								break role_loop;
 							}
 						}

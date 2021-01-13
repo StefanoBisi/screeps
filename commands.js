@@ -220,6 +220,21 @@ function analyzeRoom(args)
 	}
 }
 
+
+function test(args)
+{
+	let room = Game.rooms[args[1]];
+	let sources = room.find(FIND_SOURCES);
+	let source_to_controller = [];
+	//let source_to_spawn = [];
+	for(let i in sources)
+	{
+		source_to_controller.push(PathFinder.search(sources[i].pos, {pos: room.controller.pos, range: 1}));
+		//if(spawns.length > 0) { source_to_spawn.push(PathFinder.search(sources[i].pos, {pos: spawns[0].pos, range: 1})); }
+	}
+	for(let i in source_to_controller) { console.log(source_to_controller[i].path.length) }
+}
+
 Memory.cmd = '';
 
 module.exports = 
@@ -232,6 +247,7 @@ module.exports =
 		else if(args[0] == 'clear_debug') { clearDebug(); }
 		else if(args[0] == 'spawn') { spawn(args); }
 		else if(args[0] == 'analyze_room') { analyzeRoom(args); }
+		else if(args[0] == 'test') { test(args); }
 		else { console.log('Command not recognized'); }
 	}
 }
