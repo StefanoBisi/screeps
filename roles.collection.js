@@ -224,7 +224,7 @@ function runStorer(creep)
 			{
 				for(let creep_name in Game.creeps)
 				{
-					let creep = Game.creeps[creep];
+					let creep = Game.creeps[creep_name];
 					if(creep.memory.role == 'storer' && creep.memory.target == r.id) { return false; }
 				}
 				return false;
