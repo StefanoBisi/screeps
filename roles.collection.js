@@ -71,7 +71,8 @@ function bodyCost(body)
 	return _cost;
 }
 
-const tasks = {none: 0, upgrade: 1, build: 2, repair: 3, store:4, refill: 5, harvest: 6, mine: 7};
+const TASKS = {none: 0, upgrade: 1, build: 2, repair: 3, store:4, refill: 5, harvest: 6, mine: 7};
+const TARGET_TYPES = {ENERGY_STORE: 0, MINERAL_STORE: 1, RESOURCE: 2};
 
 function upgradeController(creep)
 {
@@ -85,7 +86,7 @@ function runMiner(creep)
 {
 	if(creep.memory.target)
 	{
-		if(creep.memory.task == tasks.harvest)
+		if(creep.memory.task == TASKS.harvest)
 		{
 			let source = Game.getObjectById(creep.memory.target);
 			let container = undefined;
@@ -101,7 +102,7 @@ function runMiner(creep)
 
 			}
 		}
-		else if (creep.memory.task == tasks.mine)
+		else if (creep.memory.task == TASKS.mine)
 		{
 			let mineral = Game.getObjectById(creep.memory.target);
 			let extractor = Game.getObjectById(Memory.rooms[creep.room.name].mineral.extractor);
@@ -139,7 +140,7 @@ function runMiner(creep)
 			if(check)
 			{
 				target = id;
-				creep.memory.task = tasks.harvest;
+				creep.memory.task = TASKS.harvest;
 			}
 		}
 		if(!target && Memory.rooms[room].mineral.ready) // Minerali
@@ -158,7 +159,7 @@ function runMiner(creep)
 			if(check)
 			{
 				target = id;
-				creep.memory.task = tasks.mine;
+				creep.memory.task = TASKS.mine;
 			}
 		}
 		creep.memory.target = target;
@@ -167,37 +168,70 @@ function runMiner(creep)
 
 function runStorer(creep)
 {
+	let task = creep.memory.task;
+	let mineralType = Game.getObjectById(Memory.rooms[creep.room.name].mineral.id).mineralType;
+	let findEnergyDeposit = function()
+	{
+		let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, { filter: function(s)
+			{
+				let type = (s.structureType == STRUCTURE_SPAWN
+				|| s.structureType == STRUCTURE_EXTENSION
+				|| s.structureType == STRUCTURE_TOWER);
+				let not_full = s.energy < s.energyCapacity;
+				let free = true;
+				for(let creep_name in Game.creeps)
+				{
+					let creep = Game.creeps[creep_name];
+					if(creep.memory.role == 'storer' && creep.memory.target == s.id)
+					{
+						free = false;
+						break;
+					}
+				}
+				return(type && not_full && free);
+			}
+		});
+		return target;
+	}
 	let findMineralDeposit = function()
 	{
 		let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s)
 		{
 			if(s.structureType == STRUCTURE_CONTAINER &&  s.store.getFreeCapacity() > 0)
 			{
-				mineral_mine = s.id != Memory.rooms[creep.room.name].mineral.container;
-				energy_mine = s.pos.findInRange(FIND_SOURCES, 1).length == 0;
-				return mineral_mine && energy_mine;
+				not_mineral_mine = s.id != Memory.rooms[creep.room.name].mineral.container;
+				not_energy_mine = s.pos.findInRange(FIND_SOURCES, 1).length == 0;
+				return not_mineral_mine && not_energy_mine;
 			}
-			else if (s.structureType == STRUCTURE_STORAGE)
-			{
-				return s.store.getFreeCapacity() > 0;
-			}
+			else if (s.structureType == STRUCTURE_STORAGE &&  s.store.getFreeCapacity() > 0) { return true; }
 			else { return false; }
-			
-			return(s.structureType == STRUCTURE_CONTAINER);
 		}});
 		return target;
-	}
-	let energyRequired = (creep.room.find(FIND_MY_STRUCTURES, {
-		filter: (s) => (s.structureType == STRUCTURE_SPAWN
-			|| s.structureType == STRUCTURE_EXTENSION
-			|| s.structureType == STRUCTURE_TOWER)
-			&& s.energy < s.energyCapacity
-		}).length > 0);
-	if(creep.store.getUsedCapacity() == 0)
+	};
+	let energyRequired = function()
 	{
-		let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES);
-		if(target) { if(creep.pickup(target) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
-		if(energyRequired && !target)
+		return(creep.room.find(FIND_MY_STRUCTURES, {
+			filter: (s) => (s.structureType == STRUCTURE_SPAWN
+				|| s.structureType == STRUCTURE_EXTENSION
+				|| s.structureType == STRUCTURE_TOWER)
+				&& s.energy < s.energyCapacity
+			}).length > 0)
+	};
+	
+	if(task == TASKS.none && creep.store.getUsedCapacity() == 0)
+	{
+		let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {filter: function(r)
+			{
+				for(let creep_name in Game.creeps)
+				{
+					let creep = Game.creeps[creep];
+					if(creep.memory.role == 'storer' && creep.memory.target == r.id) { return false; }
+				}
+				return false;
+			}
+		});
+		if(target) { creep.memory.target_type = TARGET_TYPES.RESOURCE; }
+		if(energyRequired() && !target)
 		{
 			target = creep.pos.findClosestByPath(FIND_STRUCTURES,
 				{filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] >= creep.store.getCapacity()});
@@ -205,74 +239,76 @@ function runStorer(creep)
 				{filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] > 0}); }
 			if(!target) { target = creep.pos.findClosestByPath(FIND_TOMBSTONES, {filter: (t) => t.store.getUsedCapacity() > 0}); }
 			if(!target) { target = creep.pos.findClosestByPath(FIND_RUINS, {filter: (t) => t.store.getUsedCapacity() > 0}); }
-			if(target) { if(creep.withdraw(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+			if(target) { creep.memory.target_type = TARGET_TYPES.ENERGY_STORE; }
 		}
 		if(!target)
 		{
-			if(Memory.rooms[creep.room.name].mineral && findMineralDeposit())
-			{
-				if(Memory.rooms[creep.room.name].mineral.container)
-				{
-					let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.container);
-					let mineral_type = Game.getObjectById(Memory.rooms[creep.room.name].mineral.id).mineralType;
-					if(container.store.getUsedCapacity() > 0)
-						{ if(creep.withdraw(container, mineral_type) == ERR_NOT_IN_RANGE) {creep.moveTo(container); }; }
-				}
-			}
+			let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.container);
+			if(container.store.getUsedCapacity() > 0) { target = container; }
+		}
+		if(target)
+		{
+			creep.memory.target = target.id;
+			creep.memory.task = TASKS.refill;
 		}
 	}
-	else
+	else if(task == TASKS.none && creep.store.getUsedCapacity() > 0)
 	{
-		if(energyRequired && creep.store[RESOURCE_ENERGY] > 0)
+		let target = undefined;
+		let target_type = undefined;
+		if(creep.store[RESOURCE_ENERGY] > 0)
 		{
-			let target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
-				filter: (s) => (s.structureType == STRUCTURE_SPAWN
-					|| s.structureType == STRUCTURE_EXTENSION
-					|| s.structureType == STRUCTURE_TOWER)
-					&& s.energy < s.energyCapacity
-				});
-			if(target) { if(creep.transfer(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) { creep.moveTo(target); } }
+			target = findEnergyDeposit();
+			target_type = TARGET_TYPES.ENERGY_STORE;
 		}
+		else if(creep.store[mineralType] > 0)
+		{
+			target = findMineralDeposit();
+			target_type = TARGET_TYPES.MINERAL_STORE;
+		}
+		if(target)
+		{
+			creep.memory.target = target.id;
+			creep.memory.target_type = target_type;
+			creep.memory.task = TASKS.store;
+		}
+	}
+	if(task == TASKS.refill)
+	{
+		let target = Game.getObjectById(creep.memory.target);
+		let target_type = creep.memory.target_type;
+		let n = undefined;
+		if(!creep.pos.isNearTo(target.pos)) { creep.moveTo(target); }
+		else if(target_type == TARGET_TYPES.RESOURCE) { n = creep.pickup(target, type); }
+		else if(target_type == TARGET_TYPES.ENERGY_STORE) { n = creep.withdraw(target, RESOURCE_ENERGY); }
+		else if(target_type == TARGET_TYPES.MINERAL_STORE)
+			{ n = creep.withdraw(target, Memory.rooms[creep.room.name].mineral.type); }
+		if(n != OK) { creep.memory.task = TASKS.none; return(OK); }
+	}
+	else if(task == TASKS.store)
+	{
+		let type = undefined;
+		if(creep.memory.target_type == TARGET_TYPES.ENERGY_STORE) { type = RESOURCE_ENERGY; }
+		else if(creep.memory.target_type == TARGET_TYPES.MINERAL_STORE) { type = mineralType; }
+		if(creep.store.getUsedCapacity(type) == 0) { creep.memory.task = TASKS.none; return(OK); }
+
+		let target = Game.getObjectById(creep.memory.target);
+		if(!creep.pos.isNearTo(target.pos)) { creep.moveTo(target); }
 		else
 		{
-			for(let min in creep.store)
-			{
-				if(min != RESOURCE_ENERGY)
-				{
-					let target = findMineralDeposit();/*creep.pos.findClosestByPath(FIND_STRUCTURES, {filter: function(s)
-						{
-							if(s.structureType == STRUCTURE_CONTAINER &&  s.store.getFreeCapacity() > 0)
-							{
-								mineral_mine = s.id != Memory.rooms[creep.room.name].mineral.container;
-								energy_mine = s.pos.findInRange(FIND_SOURCES, 1).length == 0;
-								return mineral_mine && energy_mine;
-							}
-							else if (s.structureType == STRUCTURE_STORAGE)
-							{
-								return s.store.getFreeCapacity() > 0;
-							}
-							else { return false; }
-							
-							return(s.structureType == STRUCTURE_CONTAINER);
-						}});*/
-					if(target)
-					{
-						if(creep.transfer(target, min) == ERR_NOT_IN_RANGE) { creep.moveTo(target); }
-						return 0;
-					}
-				}
-			}
+			let n = creep.transfer(target, type);
+			if(n != OK) { creep.memory.task = TASKS.none; return(OK); }
 		}
 	}
 }
 
 function runWorker(creep)
 {
-	if(creep.memory.task == tasks.refill)
+	if(creep.memory.task == TASKS.refill)
 	{
 		if(creep.store.getFreeCapacity() == 0)
 		{
-			creep.memory.task = tasks.none;
+			creep.memory.task = TASKS.none;
 			creep.memory.target = undefined;
 		}
 		else
@@ -302,7 +338,7 @@ function runWorker(creep)
 					if( n == ERR_NOT_IN_RANGE) { creep.moveTo(target); }
 					else
 					{
-						creep.memory.task = tasks.none;
+						creep.memory.task = TASKS.none;
 						creep.memory.target = undefined;
 					}
 				}
@@ -311,15 +347,15 @@ function runWorker(creep)
 	}
 	else
 	{
-		if(!creep.memory.task) { creep.memory.task = tasks.none; }
-		if(creep.store.getUsedCapacity() == 0) { creep.memory.task = tasks.refill; }
-		if(creep.memory.task == tasks.none) // Find a target and task
+		if(!creep.memory.task) { creep.memory.task = TASKS.none; }
+		if(creep.store.getUsedCapacity() == 0) { creep.memory.task = TASKS.refill; }
+		if(creep.memory.task == TASKS.none) // Find a target and task
 		{
 			// If the controller's timer is expiring, upgrade
 			if(creep.room.controller.ticksToDowngrade <= 1000)
 			{
 				creep.memory.target = creep.room.controller.id;
-				creep.memory.task = tasks.upgrade;
+				creep.memory.task = TASKS.upgrade;
 				return(OK);
 			}
 			// If storers are missing, act like a harvester
@@ -335,7 +371,7 @@ function runWorker(creep)
 				if(target)
 				{
 					creep.memory.target = target.id;
-					creep.memory.task = tasks.store;
+					creep.memory.task = TASKS.store;
 					return(OK);
 				}
 			}
@@ -352,7 +388,7 @@ function runWorker(creep)
 			if(target)
 			{
 				creep.memory.target = target.id;
-				creep.memory.task = tasks.repair;
+				creep.memory.task = TASKS.repair;
 				return(OK);
 			}
 			// Look for a site to build
@@ -360,34 +396,34 @@ function runWorker(creep)
 			if(target)
 			{
 				creep.memory.target = target.id;
-				creep.memory.task = tasks.build;
+				creep.memory.task = TASKS.build;
 				return(OK);
 			}
 			// Upgrade the controller
 			creep.memory.target = creep.room.controller.id;
-			creep.memory.task = tasks.upgrade;
+			creep.memory.task = TASKS.upgrade;
 			return(OK);
 		}
 		// Execute task
 		let n = OK;
 		let _target = Game.getObjectById(creep.memory.target);
-		if(creep.memory.task == tasks.store)
+		if(creep.memory.task == TASKS.store)
 		{
 			// Store
 			n = creep.transfer(_target, RESOURCE_ENERGY);
 		}
-		if(creep.memory.task == tasks.repair)
+		if(creep.memory.task == TASKS.repair)
 		{
 			// Repair
-			if(_target.hits == _target.hitsMax) { creep.memory.task = tasks.none; }
+			if(_target.hits == _target.hitsMax) { creep.memory.task = TASKS.none; }
 			else { n = creep.repair(Game.getObjectById(creep.memory.target)); }
 		}
-		else if (creep.memory.task == tasks.build)
+		else if (creep.memory.task == TASKS.build)
 		{
 			// Build
 			n = creep.build(Game.getObjectById(creep.memory.target));
 		}
-		else if (creep.memory.task == tasks.upgrade)
+		else if (creep.memory.task == TASKS.upgrade)
 		{
 			// Upgrade
 			n = creep.upgradeController(Game.getObjectById(creep.memory.target));
@@ -396,7 +432,7 @@ function runWorker(creep)
 		else if(n != OK)
 		{
 			creep.memory.target = undefined;
-			creep.memory.task = tasks.none;
+			creep.memory.task = TASKS.none;
 		}
 	}
 }
@@ -515,7 +551,7 @@ Role.prototype.generate = function(_spawn_name, _body_lvl, _name)
 	let gen_name = _name ? _name : (this.name + "_" + Game.time);
 	let gen_body_lvl = _body_lvl ? _body_lvl : Memory.roles[this.name].body.lvl;
 	let gen_body = this.body(gen_body_lvl);
-	return spawn.spawnCreep(gen_body, gen_name, {memory: {role: this.name, task: tasks.none}});
+	return spawn.spawnCreep(gen_body, gen_name, {memory: {role: this.name, task: TASKS.none}});
 }
 
 var roles = {}
