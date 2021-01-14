@@ -297,7 +297,7 @@ function runStorer(creep)
 		else
 		{
 			let n = creep.transfer(target, type);
-			if(n != OK) { creep.memory.task = TASKS.none; return(OK); }
+			creep.memory.task = TASKS.none;
 		}
 	}
 }
