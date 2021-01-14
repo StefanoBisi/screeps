@@ -105,7 +105,7 @@ function runMiner(creep)
 		{
 			let mineral = Game.getObjectById(creep.memory.target);
 			let extractor = Game.getObjectById(Memory.rooms[creep.room.name].mineral.extractor);
-			let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.mine);
+			let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.container);
 			if(!extractor || !container)
 			{
 				creep.memory.target = undefined;
