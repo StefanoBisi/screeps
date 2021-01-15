@@ -169,6 +169,7 @@ function runMiner(creep)
 function runStorer(creep)
 {
 	let task = creep.memory.task;
+	let energyRequired = creep.room.energyAvailable < creep.room.energyCapacityAvailable;
 	let mineralType = Game.getObjectById(Memory.rooms[creep.room.name].mineral.id).mineralType;
 	let findEnergyDeposit = function()
 	{
@@ -208,82 +209,75 @@ function runStorer(creep)
 		}});
 		return target;
 	};
-	let energyRequired = function()
-	{
-		return(creep.room.find(FIND_MY_STRUCTURES, {
-			filter: (s) => (s.structureType == STRUCTURE_SPAWN
-				|| s.structureType == STRUCTURE_EXTENSION
-				|| s.structureType == STRUCTURE_TOWER)
-				&& s.energy < s.energyCapacity
-			}).length > 0)
-	};
 	
-	if(task == TASKS.none && creep.store.getUsedCapacity() == 0)
+	if(task == TASKS.none)
 	{
-		let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {filter: function(r)
-			{
-				for(let creep_name in Game.creeps)
+		if(creep.store.getUsedCapacity() == 0)
+		{
+			let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {filter: function(r)
 				{
-					let creep = Game.creeps[creep_name];
-					if(creep.memory.role == 'storer' && creep.memory.target == r.id) { return false; }
+					for(let creep_name in Game.creeps)
+					{
+						let creep = Game.creeps[creep_name];
+						if(creep.memory.role == 'storer' && creep.memory.target == r.id) { return false; }
+					}
+					return false;
 				}
-				return false;
+			});
+			if(target) { creep.memory.target_type = TARGET_TYPES.RESOURCE; }
+			if(energyRequired && !target)
+			{
+				target = creep.pos.findClosestByPath(FIND_STRUCTURES,
+					{filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] >= creep.store.getCapacity()});
+				if(!target) { target = creep.pos.findClosestByPath(FIND_STRUCTURES,
+					{filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] > 0}); }
+				if(!target) { target = creep.pos.findClosestByPath(FIND_TOMBSTONES, {filter: (t) => t.store.getUsedCapacity() > 0}); }
+				if(!target) { target = creep.pos.findClosestByPath(FIND_RUINS, {filter: (t) => t.store.getUsedCapacity() > 0}); }
+				if(target) { creep.memory.target_type = TARGET_TYPES.ENERGY_STORE; }
 			}
-		});
-		if(target) { creep.memory.target_type = TARGET_TYPES.RESOURCE; }
-		if(energyRequired() && !target)
-		{
-			target = creep.pos.findClosestByPath(FIND_STRUCTURES,
-				{filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] >= creep.store.getCapacity()});
-			if(!target) { target = creep.pos.findClosestByPath(FIND_STRUCTURES,
-				{filter: (c) => c.structureType == STRUCTURE_CONTAINER && c.store[RESOURCE_ENERGY] > 0}); }
-			if(!target) { target = creep.pos.findClosestByPath(FIND_TOMBSTONES, {filter: (t) => t.store.getUsedCapacity() > 0}); }
-			if(!target) { target = creep.pos.findClosestByPath(FIND_RUINS, {filter: (t) => t.store.getUsedCapacity() > 0}); }
-			if(target) { creep.memory.target_type = TARGET_TYPES.ENERGY_STORE; }
+			if(!target)
+			{
+				let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.container);
+				if(container.store.getUsedCapacity() > 0) { target = container; }
+			}
+			if(target)
+			{
+				creep.memory.target = target.id;
+				creep.memory.task = TASKS.refill;
+			}
 		}
-		if(!target)
+		else if(creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0 && energyRequired)
 		{
-			let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.container);
-			if(container.store.getUsedCapacity() > 0) { target = container; }
+			let target = findEnergyDeposit();
+			if(target)
+			{
+				creep.memory.target = target.id;
+				creep.memory.target_type = TARGET_TYPES.ENERGY_STORE;
+				creep.memory.task = TASKS.store;
+			}
 		}
-		if(target)
+		else if (creep.store.getFreeCapacity() > 0)
 		{
-			creep.memory.target = target.id;
-			creep.memory.task = TASKS.refill;
-		}
-	}
-	else if(task == TASKS.none && creep.store.getUsedCapacity() > 0)
-	{
-		let target = undefined;
-		let target_type = undefined;
-		if(creep.store[RESOURCE_ENERGY] > 0)
-		{
-			target = findEnergyDeposit();
-			target_type = TARGET_TYPES.ENERGY_STORE;
-		}
-		else if(creep.store[mineralType] > 0)
-		{
-			target = findMineralDeposit();
-			target_type = TARGET_TYPES.MINERAL_STORE;
-		}
-		if(target)
-		{
-			creep.memory.target = target.id;
-			creep.memory.target_type = target_type;
-			creep.memory.task = TASKS.store;
+			let target = findMineralDeposit();
+			if(target)
+			{
+				creep.memory.target = target.id;
+				creep.memory.target_type = TARGET_TYPES.MINERAL_STORE;
+				creep.memory.task = TASKS.store;
+			}
 		}
 	}
 	if(task == TASKS.refill)
 	{
 		let target = Game.getObjectById(creep.memory.target);
 		let target_type = creep.memory.target_type;
-		let n = undefined;
-		if(!creep.pos.isNearTo(target.pos)) { creep.moveTo(target); }
+		let n = OK;
+		if(!creep.pos.isNearTo(target.pos)) { creep.moveTo(target);}
 		else if(target_type == TARGET_TYPES.RESOURCE) { n = creep.pickup(target, type); }
 		else if(target_type == TARGET_TYPES.ENERGY_STORE) { n = creep.withdraw(target, RESOURCE_ENERGY); }
 		else if(target_type == TARGET_TYPES.MINERAL_STORE)
 			{ n = creep.withdraw(target, Memory.rooms[creep.room.name].mineral.type); }
-		if(n != OK) { creep.memory.task = TASKS.none; return(OK); }
+		if(n != OK) { creep.memory.task = TASKS.none; }
 	}
 	else if(task == TASKS.store)
 	{
@@ -291,6 +285,7 @@ function runStorer(creep)
 		if(creep.memory.target_type == TARGET_TYPES.ENERGY_STORE) { type = RESOURCE_ENERGY; }
 		else if(creep.memory.target_type == TARGET_TYPES.MINERAL_STORE) { type = mineralType; }
 		if(creep.store.getUsedCapacity(type) == 0) { creep.memory.task = TASKS.none; return(OK); }
+		if(type == RESOURCE_ENERGY && !energyRequired) { creep.memory.task = TASKS.none; return(OK); }
 
 		let target = Game.getObjectById(creep.memory.target);
 		if(!creep.pos.isNearTo(target.pos)) { creep.moveTo(target); }
