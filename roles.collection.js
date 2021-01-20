@@ -238,7 +238,11 @@ function runStorer(creep)
 			if(!target)
 			{
 				let container = Game.getObjectById(Memory.rooms[creep.room.name].mineral.container);
-				if(container.store.getUsedCapacity() > 0) { target = container; }
+				if(container.store.getUsedCapacity() > 0)
+				{
+					target = container;
+					creep.memory.target_type = TARGET_TYPES.MINERAL_STORE;
+				}
 			}
 			if(target)
 			{
@@ -273,7 +277,7 @@ function runStorer(creep)
 		let target_type = creep.memory.target_type;
 		let n = OK;
 		if(!creep.pos.isNearTo(target.pos)) { creep.moveTo(target);}
-		else if(target_type == TARGET_TYPES.RESOURCE) { n = creep.pickup(target, type); }
+		else if(target_type == TARGET_TYPES.RESOURCE) { n = creep.pickup(target); }
 		else if(target_type == TARGET_TYPES.ENERGY_STORE) { n = creep.withdraw(target, RESOURCE_ENERGY); }
 		else if(target_type == TARGET_TYPES.MINERAL_STORE)
 			{ n = creep.withdraw(target, Memory.rooms[creep.room.name].mineral.type); }

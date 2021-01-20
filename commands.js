@@ -144,14 +144,13 @@ function analyzeRoom(args)
 		Memory.rooms[args[1]].mineral.ready = (extractors.length > 0 && containers.length > 0);
 		
 		// Distances
-		/*let source_to_controller = [];
+		let source_to_controller = [];
 		let source_to_spawn = [];
 		for(let i in sources)
 		{
-			console.log(sources[i].pos.x + ' ' + sources[i].pos.y )
-			source_to_controller.push(PathFinder.search(sources[i].pos, {target: room.controller, range: 1}));
-			if(spawns.length > 0) { source_to_spawn.push(PathFinder.search(sources[i].pos, {target: spawns[0], range: 1})); }
-		}*/
+			source_to_controller.push(PathFinder.search(sources[i].pos, {pos: room.controller.pos, range: 1}));
+			if(spawns.length > 0) { source_to_spawn.push(PathFinder.search(sources[i].pos, {pos: spawns[0].pos, range: 1})); }
+		}
 		
 		// Roles Requirements
 		// Miners
@@ -184,19 +183,24 @@ function analyzeRoom(args)
 		// Workers
 		lvl = 0;
 		cost = 0;
+		let avg_travel = 50
+		let miner_lvl = Memory.rooms[args[1]].roles.miner.body.lvl
+		let carry_overflow = false;
+		for(let i in source_to_controller) { 
+			console.log(source_to_controller[i].path.length)
+			avg_travel += source_to_controller[i].path.length; }
 		do
 		{
 			lvl += 1;
 			let plus_cost = roles['worker'].bodyCost(lvl);
 			if (plus_cost == cost) { break; }
 			else { cost = plus_cost; }
-		} while (cost < (0.8 * room.energyCapacityAvailable));
+			console.log(miner_lvl * avg_travel);
+			console.log(lvl * 50)
+			carry_overflow = (miner_lvl * avg_travel) < lvl * 50;
+		} while (cost < (0.8 * room.energyCapacityAvailable) || !carry_overflow);
 		lvl = (lvl == 0) ? 0 : (lvl - 1);
 		Memory.rooms[args[1]].roles.worker.required = 2 * Memory.rooms[args[1]].sources.total;
-		/*let workerTime = 50;
-		for(let i in source_to_controller) { workerTime += source_to_controller[i].path.length; }
-		let minerTime = Math.round(lvl * 25 / Memory.rooms[args[1]].roles.miner.body.lvl);
-		Memory.rooms[args[1]].roles.worker.required = workerTime / minerTime;*/
 		Memory.rooms[args[1]].roles.worker.body = {};
 		Memory.rooms[args[1]].roles.worker.body.lvl = lvl;
 		// Defenders
