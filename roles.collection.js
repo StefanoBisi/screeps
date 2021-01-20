@@ -292,6 +292,7 @@ function runStorer(creep)
 		if(type == RESOURCE_ENERGY && !energyRequired) { creep.memory.task = TASKS.none; return(OK); }
 
 		let target = Game.getObjectById(creep.memory.target);
+		if(target.store.getFreeCapacity() == 0) { console.log('here');creep.memory.task = TASKS.none; return(OK); }
 		if(!creep.pos.isNearTo(target.pos)) { creep.moveTo(target); }
 		else
 		{

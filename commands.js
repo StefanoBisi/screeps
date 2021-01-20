@@ -186,21 +186,17 @@ function analyzeRoom(args)
 		let avg_travel = 50
 		let miner_lvl = Memory.rooms[args[1]].roles.miner.body.lvl
 		let carry_overflow = false;
-		for(let i in source_to_controller) { 
-			console.log(source_to_controller[i].path.length)
-			avg_travel += source_to_controller[i].path.length; }
+		for(let i in source_to_controller) { avg_travel += source_to_controller[i].path.length; }
 		do
 		{
 			lvl += 1;
 			let plus_cost = roles['worker'].bodyCost(lvl);
 			if (plus_cost == cost) { break; }
 			else { cost = plus_cost; }
-			console.log(miner_lvl * avg_travel);
-			console.log(lvl * 50)
-			carry_overflow = (miner_lvl * avg_travel) < lvl * 50;
+			carry_overflow = (miner_lvl * 2 * avg_travel) < lvl * 50;
 		} while (cost < (0.8 * room.energyCapacityAvailable) || !carry_overflow);
 		lvl = (lvl == 0) ? 0 : (lvl - 1);
-		Memory.rooms[args[1]].roles.worker.required = 2 * Memory.rooms[args[1]].sources.total;
+		Memory.rooms[args[1]].roles.worker.required = Memory.rooms[args[1]].sources.total;
 		Memory.rooms[args[1]].roles.worker.body = {};
 		Memory.rooms[args[1]].roles.worker.body.lvl = lvl;
 		// Defenders
