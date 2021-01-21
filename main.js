@@ -39,7 +39,8 @@ module.exports.loop = function ()
 			try
 			{
 				let room = Game.rooms[room_name];
-				if(room.controller.my && Memory.rooms[room_name] && Memory.rooms[room_name].auto)
+				if(!room.controller.my) { continue; }
+				if(Memory.rooms[room_name] && Memory.rooms[room_name].auto)
 				{
 					let creeps_tot = 0;
 					let spawn_name = Memory.rooms[room.name].default.spawn;

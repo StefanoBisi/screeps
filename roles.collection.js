@@ -14,7 +14,7 @@ function minerBody(lvl = 0)
 function storerBody(lvl = 0)
 {
 	if(lvl < 0) { lvl = 0; }
-	if(lvl > 4) { lvl = 4; }
+	if(lvl > 6) { lvl = 6; }
 	let _body = [];
 	let n = Math.ceil((lvl+1)/2);
 	for(let i=0; i<(lvl+1); i++) { _body.push(CARRY); }
@@ -260,7 +260,7 @@ function runStorer(creep)
 				creep.memory.task = TASKS.store;
 			}
 		}
-		else if (creep.store.getFreeCapacity() > 0)
+		else if (creep.store.getUsedCapacity(mineralType) > 0)
 		{
 			let target = findMineralDeposit();
 			if(target)
@@ -280,7 +280,7 @@ function runStorer(creep)
 		else if(target_type == TARGET_TYPES.RESOURCE) { n = creep.pickup(target); }
 		else if(target_type == TARGET_TYPES.ENERGY_STORE) { n = creep.withdraw(target, RESOURCE_ENERGY); }
 		else if(target_type == TARGET_TYPES.MINERAL_STORE)
-			{ n = creep.withdraw(target, Memory.rooms[creep.room.name].mineral.type); }
+			{n = creep.withdraw(target, Memory.rooms[creep.room.name].mineral.type); }
 		if(n != OK) { creep.memory.task = TASKS.none; }
 	}
 	else if(task == TASKS.store)
@@ -292,7 +292,7 @@ function runStorer(creep)
 		if(type == RESOURCE_ENERGY && !energyRequired) { creep.memory.task = TASKS.none; return(OK); }
 
 		let target = Game.getObjectById(creep.memory.target);
-		if(target.store.getFreeCapacity() == 0) { console.log('here');creep.memory.task = TASKS.none; return(OK); }
+		if(target.store.getFreeCapacity() == 0) { creep.memory.task = TASKS.none; return(OK); }
 		if(!creep.pos.isNearTo(target.pos)) { creep.moveTo(target); }
 		else
 		{

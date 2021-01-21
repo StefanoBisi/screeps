@@ -97,6 +97,7 @@ function analyzeRoom(args)
 	if(!Memory.rooms[args[1]]) {Memory.rooms[args[1]] = {}; }
 	if(!Memory.rooms[args[1]].roles) { Memory.rooms[args[1]].roles = {}; }
 	if(!Memory.rooms[args[1]].default) { Memory.rooms[args[1]].default = {}; }
+	if(!Memory.rooms[args[1]].invaded) { Memory.rooms[args[1]].invaded = false; }
 	for(let role in roles)
 	{
 		if(!Memory.rooms[args[1]].roles[role]){ Memory.rooms[args[1]].roles[role] = {}; }
@@ -177,7 +178,7 @@ function analyzeRoom(args)
 			else { cost = plus_cost; }
 		} while (cost < (0.8 * room.energyCapacityAvailable));
 		lvl = (lvl == 0) ? 0 : (lvl - 1);
-		Memory.rooms[args[1]].roles.storer.required =  mines_count;
+		Memory.rooms[args[1]].roles.storer.required = mines_count;
 		Memory.rooms[args[1]].roles.storer.body = {};
 		Memory.rooms[args[1]].roles.storer.body.lvl = lvl;
 		// Workers
@@ -194,9 +195,9 @@ function analyzeRoom(args)
 			if (plus_cost == cost) { break; }
 			else { cost = plus_cost; }
 			carry_overflow = (miner_lvl * 2 * avg_travel) < lvl * 50;
-		} while (cost < (0.8 * room.energyCapacityAvailable) || !carry_overflow);
+		} while (cost < (0.8 * room.energyCapacityAvailable) && !carry_overflow);
 		lvl = (lvl == 0) ? 0 : (lvl - 1);
-		Memory.rooms[args[1]].roles.worker.required = Memory.rooms[args[1]].sources.total;
+		Memory.rooms[args[1]].roles.worker.required = 2 * Memory.rooms[args[1]].sources.total;
 		Memory.rooms[args[1]].roles.worker.body = {};
 		Memory.rooms[args[1]].roles.worker.body.lvl = lvl;
 		// Defenders
@@ -223,16 +224,12 @@ function analyzeRoom(args)
 
 function test(args)
 {
-	let room = Game.rooms[args[1]];
-	let sources = room.find(FIND_SOURCES);
-	let source_to_controller = [];
-	//let source_to_spawn = [];
-	for(let i in sources)
-	{
-		source_to_controller.push(PathFinder.search(sources[i].pos, {pos: room.controller.pos, range: 1}));
-		//if(spawns.length > 0) { source_to_spawn.push(PathFinder.search(sources[i].pos, {pos: spawns[0].pos, range: 1})); }
+	for(let c in Game.creeps){
+		let creep = Game.creeps[c];
+		if(c.role == undefined){
+			console.log(c.name);
+		}
 	}
-	for(let i in source_to_controller) { console.log(source_to_controller[i].path.length) }
 }
 
 Memory.cmd = '';
