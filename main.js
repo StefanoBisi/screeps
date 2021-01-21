@@ -31,6 +31,34 @@ module.exports.loop = function ()
 			}
 		}
 	}
+
+	/*if(Memory.invasionTarget)
+	{
+		let room = Game.rooms[Memory.invasionTarget];
+		if(room)
+		{
+			if(room.controller.my) { Memory.invasionTarget = undefined; }
+			else if (room.controller.level == 0)
+			{
+				let n = _.sum(Game.creeps, (c) => c.memory.role == 'claimer') == 0
+				if(n == 0) { roles['claimer'].generate(Memory.default.spawn); }
+			}
+			else
+			{
+				let n = _.sum(Game.creeps, (c) => c.memory.role == 'trooper') == 0
+				if (n < 5)
+				{
+					for(let s in Game.spawns)
+					{
+						if(!Game.spawns[s].spawning)
+						{
+							roles.trooper.generate(s, 5);
+						}
+					}
+				}
+			}
+		}
+	}*/
 	
 	if((Game.time % 11) == 0)
 	{

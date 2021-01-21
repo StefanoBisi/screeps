@@ -77,7 +77,7 @@ function invade(args)
 	if(args[1])
 	{
 		Memory.invasionTarget = args[1];
-		if (_.sum(Game.creeps, (c) => c.memory.role == 'claimer') == 0) { roles['claimer'].generate(Memory.default.spawn); }
+		//if (_.sum(Game.creeps, (c) => c.memory.role == 'claimer') == 0) { roles['claimer'].generate(Memory.default.spawn); }
 	}
 	else { console.log('Missing target argument'); }
 }
