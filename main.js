@@ -74,7 +74,7 @@ module.exports.loop = function ()
 					let spawn_name = Memory.rooms[room.name].default.spawn;
 					role_loop: for(role_name in roles)
 					{
-						let n = _.sum(room.find(FIND_CREEPS), (c) => c.memory.role == role_name);
+						let n = _.sum(room.find(FIND_MY_CREEPS), (c) => c.memory.role == role_name);
 						Memory.rooms[room_name].roles[role_name].count = n;
 						let req = Memory.rooms[room.name].roles[role_name].required;
 						if(n < req && !Game.spawns[spawn_name].spawning)
